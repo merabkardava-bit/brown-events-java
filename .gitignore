@@ -1,0 +1,34 @@
+# Maven
+target/
+backend/.m2/
+*.jar
+*.war
+*.class
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.idea/
+.serena/
+.codemie/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Docker
+postgres_data/
+
+# Logs
+*.log
