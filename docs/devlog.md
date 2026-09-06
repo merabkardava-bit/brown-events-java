@@ -24,3 +24,12 @@ I asked claude to add swagger documentation to the API with every endpoint, it's
 and an example request body documented by referencing controller classes and @docs/architecture.md.
 The changes were mostly correct after the first prompt, the only issue was that text block literals were used
 that aren't supported in java 11.
+
+### BEVN-004 — Technical Debt Audit
+
+I asked claude to read both frontend and backend and audit every issue according to the requirements.
+It deployed two explore subagents one for front and one for back. But it started writing the audit document
+before the frontend agent finished reporting so the file only included backend issues. 
+I had to prompt claude to include issues from frontend agent's findings as well.
+I could have explicitly mentioned to wait until they both returned findings 
+or not use separate subagents at all, since the project isn't very large yet.
