@@ -1,34 +1,46 @@
 package com.brownevents.app.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
+@Schema(description = "A scheduled session (talk or workshop) within a conference.")
 @Entity
 @Table(name = "conference_sessions")
 public class Session {
 
+    @Schema(description = "Unique identifier of the session.", example = "10", accessMode = Schema.AccessMode.READ_ONLY)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Schema(description = "Title of the session.", example = "Intro to Spring Boot 3")
     private String title;
 
+    @Schema(description = "Detailed description of the session.", example = "An introductory walkthrough of Spring Boot 3 features and migration tips.")
     private String description;
 
+    @Schema(description = "Session start date/time (ISO 8601).", example = "2025-06-10T09:00:00")
     private LocalDateTime startTime;
 
+    @Schema(description = "Session end date/time (ISO 8601).", example = "2025-06-10T10:00:00")
     private LocalDateTime endTime;
 
+    @Schema(description = "Maximum number of attendees the session can accommodate.", example = "120")
     private Integer capacity;
 
+    @Schema(description = "The conference this session belongs to. Only the id field is required when creating a session.")
     @ManyToOne
     @JoinColumn(name = "conference_id")
     private Conference conference;
 
+    @Schema(description = "Speaker presenting this session. Only the id field is required when creating a session.")
     @ManyToOne
     @JoinColumn(name = "speaker_id")
     private Speaker speaker;
 
+    @Schema(description = "Room where the session is held. Only the id field is required when creating a session.")
     @ManyToOne
     @JoinColumn(name = "room_id")
     private Room room;
