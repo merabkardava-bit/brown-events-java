@@ -30,18 +30,23 @@ public class Session {
     @Schema(description = "Maximum number of attendees the session can accommodate.", example = "120")
     private Integer capacity;
 
+    // BEVJ-101: explicit LAZY fetch on all three @ManyToOne associations.
+    // The JPA default is EAGER, which caused Hibernate to fire 3 extra SELECTs
+    // per session row when loading the sessions list — a classic N+1 problem.
+    // SessionRepository.findByConferenceId now uses JOIN FETCH to load all three
+    // associations in a single query, so the response data is unchanged.
     @Schema(description = "The conference this session belongs to. Only the id field is required when creating a session.")
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conference_id")
     private Conference conference;
 
     @Schema(description = "Speaker presenting this session. Only the id field is required when creating a session.")
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "speaker_id")
     private Speaker speaker;
 
     @Schema(description = "Room where the session is held. Only the id field is required when creating a session.")
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id")
     private Room room;
 

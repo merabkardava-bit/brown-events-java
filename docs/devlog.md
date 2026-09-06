@@ -33,3 +33,15 @@ before the frontend agent finished reporting so the file only included backend i
 I had to prompt claude to include issues from frontend agent's findings as well.
 I could have explicitly mentioned to wait until they both returned findings 
 or not use separate subagents at all, since the project isn't very large yet.
+
+### BEVJ-101 — Slow Sessions Page
+
+I reported that opening a conference page with many sessions was noticeably slow with no errors.
+I asked Claude to find the root cause and reference the @tech-debt-audit.md file from the previous task
+and it identified the root cause as an N+1 query problem
+on the `Session` entity: all three `@ManyToOne` associations (`conference`, `speaker`, `room`)
+defaulted to `FetchType.EAGER`, causing Hibernate to fire 1 + 3N database queries for a list of
+N sessions. The fix was two changes: marking all three associations `LAZY` in `Session.java`, and
+replacing the derived `findByConferenceId` query in `SessionRepository` with an explicit JPQL
+query using `JOIN FETCH` / `LEFT JOIN FETCH` to load the full object graph in a single round-trip.
+The response data and method signatures stayed identical. I also asked to add comments to the changed parts.
