@@ -1,19 +1,26 @@
 package com.brownevents.app.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import javax.persistence.*;
 
+@Schema(description = "A room that can host conference sessions. Rooms are pre-seeded and are referenced by ID when creating sessions.")
 @Entity
 @Table(name = "rooms")
 public class Room {
 
+    @Schema(description = "Unique identifier of the room.", example = "2", accessMode = Schema.AccessMode.READ_ONLY)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Schema(description = "Name of the room.", example = "Auditorium A")
     private String name;
 
+    @Schema(description = "Maximum seating capacity of the room.", example = "300")
     private Integer capacity;
 
+    @Schema(description = "Physical location of the room within the venue.", example = "Building 1, Floor 2")
     private String location;
 
     public Room() {

@@ -1,29 +1,39 @@
 package com.brownevents.app.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Schema(description = "A conference event hosted on the platform.")
 @Entity
 @Table(name = "conferences")
 public class Conference {
 
+    @Schema(description = "Unique identifier of the conference.", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Schema(description = "Title of the conference.", example = "Brown Tech Summit 2025")
     private String title;
 
+    @Schema(description = "Detailed description of the conference.", example = "A two-day summit covering the latest in AI, cloud, and open-source engineering.")
     private String description;
 
+    @Schema(description = "Physical or virtual location of the conference.", example = "Providence, RI")
     private String location;
 
+    @Schema(description = "Date the conference begins (ISO 8601).", example = "2025-06-10")
     private LocalDate startDate;
 
+    @Schema(description = "Date the conference ends (ISO 8601).", example = "2025-06-11")
     private LocalDate endDate;
 
+    @Schema(description = "Current lifecycle status of the conference.", example = "UPCOMING",
+            allowableValues = {"UPCOMING", "ONGOING", "COMPLETED", "CANCELLED"})
     private String status;
 
     @OneToMany(mappedBy = "conference", fetch = FetchType.LAZY)

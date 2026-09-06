@@ -1,19 +1,26 @@
 package com.brownevents.app.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import javax.persistence.*;
 
+@Schema(description = "A person who registers for one or more conferences.")
 @Entity
 @Table(name = "attendees")
 public class Attendee {
 
+    @Schema(description = "Unique identifier of the attendee.", example = "42", accessMode = Schema.AccessMode.READ_ONLY)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Schema(description = "Attendee's first name.", example = "Grace")
     private String firstName;
 
+    @Schema(description = "Attendee's last name.", example = "Hopper")
     private String lastName;
 
+    @Schema(description = "Attendee's email address. Used to de-duplicate attendees — existing records are reused on re-registration.", example = "grace.hopper@example.com")
     private String email;
 
     public Attendee() {
