@@ -260,3 +260,105 @@ DELETE /api/conferences/{id}/registrations/{registrationId}
 > **Note**: `Room` has no controller endpoints — rooms are pre-seeded by `DataInitializer` and referenced by ID in session payloads.
 
 ---
+
+## 5. Frontend Architecture
+
+> **Stack**: React 18 · React Router v6 · Vite 4 · plain CSS (no UI library, no TypeScript)  
+> **Dev server**: `localhost:3000`  
+> **Production**: nginx static file server + `/api/` reverse proxy to backend
+
+---
+
+### 5.1 Directory Structure
+
+```
+frontend/src/
+├── main.jsx          # ReactDOM.createRoot entry point
+├── App.jsx           # BrowserRouter + route table
+├── api.js            # All fetch calls to the backend (single source of truth)
+├── index.css         # Full design system — CSS custom properties + all component styles
+├── pages/
+│   ├── ConferenceListPage.jsx     # "/" — conference grid + inline "New Conference" modal
+│   ├── ConferenceDetailPage.jsx   # "/conferences/:id" — sessions, registrations, inline register modal
+│   ├── SessionDetailPage.jsx      # "/conferences/:id/sessions/:sessionId" — session detail
+│   └── RegistrationPage.jsx       # "/conferences/:id/register" — standalone register form
+└── components/
+    ├── ConferenceCard.jsx          # Single conference card used in the list grid
+    ├── SessionList.jsx             # Renders a list of SessionCard items
+    ├── SessionCard.jsx             # Clickable session card
+    └── SessionMeta.jsx             # Time / room / capacity / speaker row + "View Details" link
+```
+
+---
+
+### 5.2 Route Table
+
+| Path | Page | Notes |
+|------|------|-------|
+| `/` | `ConferenceListPage` | Conference grid; "New Conference" opens an inline modal |
+| `/conferences/:id` | `ConferenceDetailPage` | Sessions list, registrations table, inline register modal |
+| `/conferences/:id/sessions/:sessionId` | `SessionDetailPage` | Full session detail |
+| `/conferences/:id/register` | `RegistrationPage` | Standalone register form (lighter than the modal) |
+
+Client-side routing uses `BrowserRouter`; nginx serves `index.html` as the fallback for all non-asset paths (`try_files $uri $uri/ /index.html`).
+
+---
+
+### 5.3 State Management
+
+There is no global state library. Every page manages its own data with `useState` + `useEffect` for fetching. There is no shared context or store — data is fetched fresh on each page mount.
+
+---
+
+### 5.4 API Layer (`frontend/src/api.js`)
+
+All backend communication is centralised in a single module. It uses the native `fetch` API. `BASE_URL` is hardcoded to `http://localhost:8080` — change this or use `import.meta.env.VITE_API_URL` for non-local deployments.
+
+| Function | Method | Backend Endpoint |
+|----------|--------|-----------------|
+| `getConferences()` | GET | `/api/conferences` |
+| `getConference(id)` | GET | `/api/conferences/:id` |
+| `createConference(data)` | POST | `/api/conferences` |
+| `getConferenceSessions(id)` | GET | `/api/conferences/:id/sessions` |
+| `getSession(id)` | GET | `/api/sessions/:id` |
+| `getSpeakers()` | GET | `/api/speakers` |
+| `getConferenceRegistrations(id)` | GET | `/api/conferences/:id/registrations` |
+| `registerAttendee(confId, data)` | POST | `/api/conferences/:confId/register` |
+| `deleteRegistration(confId, regId)` | DELETE | `/api/conferences/:confId/registrations/:regId` |
+
+> **Note**: Several functions do `data.data || data` to handle inconsistent response shapes from the backend (some endpoints wrap in `{ "data": ... }`, others return the entity directly).
+
+---
+
+### 5.5 Frontend → Backend Request Flow
+
+```
+User interaction (click / form submit)
+    |
+    v
+Page component (useState, useEffect)
+    |
+    v
+api.js function  ──── fetch() ────►  Spring Boot REST API (localhost:8080)
+    |                                        |
+    ◄─────────── JSON response ─────────────┘
+    |
+    v
+setState → re-render
+```
+
+In development, Vite also proxies `/api/*` to `http://localhost:8080` via `vite.config.js`, but this is redundant because `api.js` already uses an absolute base URL.
+
+---
+
+### 5.6 Build and Deployment
+
+| Environment | How it runs |
+|---|---|
+| **Development** | `npm run dev` (from `frontend/`) — Vite dev server on port 3000 with HMR |
+| **Production (Docker)** | Multi-stage Dockerfile: Node 18 Alpine builds `dist/`, then nginx Alpine serves it |
+| **nginx proxy** | `/api/` → `http://backend:8080/api/` (Docker Compose service name); all other paths → `index.html` |
+
+**Fonts** (loaded via Google Fonts in `index.html`): Bebas Neue (display headings), Lora (body serif), Space Mono (labels/metadata).
+
+---
