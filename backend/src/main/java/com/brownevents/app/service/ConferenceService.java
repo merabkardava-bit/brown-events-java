@@ -4,9 +4,9 @@ import com.brownevents.app.entity.Conference;
 import com.brownevents.app.entity.Session;
 import com.brownevents.app.repository.ConferenceRepository;
 import com.brownevents.app.repository.SessionRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ConferenceService {
@@ -20,8 +20,8 @@ public class ConferenceService {
         this.sessionRepository = sessionRepository;
     }
 
-    public List<Conference> getAllConferences() {
-        return conferenceRepository.findAll();
+    public Page<Conference> getAllConferences(Pageable pageable) {
+        return conferenceRepository.findAll(pageable);
     }
 
     public Conference getConference(Long id) {
@@ -43,8 +43,8 @@ public class ConferenceService {
         return conferenceRepository.save(existing);
     }
 
-    public List<Session> getConferenceSessions(Long id) {
-        return sessionRepository.findByConferenceId(id);
+    public Page<Session> getConferenceSessions(Long id, Pageable pageable) {
+        return sessionRepository.findPageByConferenceId(id, pageable);
     }
 
     public Session createSession(Long conferenceId, Session session) {

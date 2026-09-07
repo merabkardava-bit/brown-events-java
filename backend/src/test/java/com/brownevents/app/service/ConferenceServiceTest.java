@@ -8,12 +8,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,15 +43,17 @@ public class ConferenceServiceTest {
         conf2.setId(2L);
         conf2.setTitle("Java Developer Days");
 
-        List<Conference> expected = Arrays.asList(conf1, conf2);
-        when(conferenceRepository.findAll()).thenReturn(expected);
+        List<Conference> conferenceList = Arrays.asList(conf1, conf2);
+        Pageable pageable = PageRequest.of(0, 12);
+        Page<Conference> expected = new PageImpl<>(conferenceList, pageable, conferenceList.size());
+        when(conferenceRepository.findAll(any(Pageable.class))).thenReturn(expected);
 
-        List<Conference> result = conferenceService.getAllConferences();
+        Page<Conference> result = conferenceService.getAllConferences(pageable);
 
         assertNotNull(result);
-        assertEquals(2, result.size());
-        assertEquals("Spring Tech Summit 2024", result.get(0).getTitle());
-        verify(conferenceRepository, times(1)).findAll();
+        assertEquals(2, result.getTotalElements());
+        assertEquals("Spring Tech Summit 2024", result.getContent().get(0).getTitle());
+        verify(conferenceRepository, times(1)).findAll(any(Pageable.class));
     }
 
     @Test

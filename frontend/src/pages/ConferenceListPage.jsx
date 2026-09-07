@@ -9,6 +9,14 @@ export default function ConferenceListPage() {
   const [conferences, setConferences] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Pagination state
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  // refreshKey forces a re-fetch even when page is already 0 (e.g. after creating a conference)
+  const [refreshKey, setRefreshKey] = useState(0)
+
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState(null)
@@ -17,17 +25,18 @@ export default function ConferenceListPage() {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    getConferences()
+    getConferences(page)
       .then(data => {
-        const list = data.data || data
-        setConferences(Array.isArray(list) ? list : [])
+        setConferences(Array.isArray(data.data) ? data.data : [])
+        setTotalPages(data.totalPages ?? 1)
+        setTotalElements(data.totalElements ?? 0)
         setLoading(false)
       })
       .catch(err => {
         setError(err.message || 'Failed to load conferences')
         setLoading(false)
       })
-  }, [])
+  }, [page, refreshKey])
 
   function handleFormChange(e) {
     const { name, value } = e.target
@@ -54,8 +63,10 @@ export default function ConferenceListPage() {
     setSubmitting(true)
     setFormError(null)
     createConference(form)
-      .then(created => {
-        setConferences(prev => [created, ...prev])
+      .then(() => {
+        // Go back to page 0 and reload — new conference appears at the top
+        setPage(0)
+        setRefreshKey(k => k + 1)
         setShowModal(false)
         setSubmitting(false)
       })
@@ -168,6 +179,29 @@ export default function ConferenceListPage() {
             {conferences.map(conference => (
               <ConferenceCard key={conference.id} conference={conference} />
             ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="pagination">
+            <button
+              className="pagination__btn"
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              ← Prev
+            </button>
+            <span className="pagination__info">
+              Page {page + 1} of {totalPages}
+              {totalElements > 0 && <> &nbsp;·&nbsp; {totalElements} total</>}
+            </span>
+            <button
+              className="pagination__btn"
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              Next →
+            </button>
           </div>
         )}
       </div>

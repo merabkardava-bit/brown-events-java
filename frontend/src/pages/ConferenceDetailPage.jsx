@@ -15,6 +15,11 @@ export default function ConferenceDetailPage() {
   const [error, setError] = useState(null)
   const [sessionsError, setSessionsError] = useState(null)
 
+  // Sessions pagination
+  const [sessionPage, setSessionPage] = useState(0)
+  const [sessionTotalPages, setSessionTotalPages] = useState(0)
+  const [sessionTotalElements, setSessionTotalElements] = useState(0)
+
   // Registration modal state
   const [showModal, setShowModal] = useState(false)
   const [selectedSession, setSelectedSession] = useState(null)
@@ -70,16 +75,18 @@ export default function ConferenceDetailPage() {
   useEffect(() => {
     setSessionsLoading(true)
     setSessionsError(null)
-    getConferenceSessions(id)
+    getConferenceSessions(id, sessionPage)
       .then(data => {
-        setSessions(Array.isArray(data) ? data : [])
+        setSessions(Array.isArray(data.data) ? data.data : [])
+        setSessionTotalPages(data.totalPages ?? 1)
+        setSessionTotalElements(data.totalElements ?? 0)
         setSessionsLoading(false)
       })
       .catch(err => {
         setSessionsError(err.message || 'Failed to load sessions')
         setSessionsLoading(false)
       })
-  }, [id])
+  }, [id, sessionPage])
 
   function handleRemoveRegistration(registrationId) {
     setDeleteError(null)
@@ -321,11 +328,35 @@ export default function ConferenceDetailPage() {
               No sessions scheduled yet.
             </div>
           ) : (
-            <SessionList
-              sessions={sessions}
-              conferenceId={id}
-              onSessionClick={handleSessionClick}
-            />
+            <>
+              <SessionList
+                sessions={sessions}
+                conferenceId={id}
+                onSessionClick={handleSessionClick}
+              />
+              {sessionTotalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="pagination__btn"
+                    onClick={() => setSessionPage(p => Math.max(0, p - 1))}
+                    disabled={sessionPage === 0}
+                  >
+                    ← Prev
+                  </button>
+                  <span className="pagination__info">
+                    Page {sessionPage + 1} of {sessionTotalPages}
+                    {sessionTotalElements > 0 && <> &nbsp;·&nbsp; {sessionTotalElements} total</>}
+                  </span>
+                  <button
+                    className="pagination__btn"
+                    onClick={() => setSessionPage(p => Math.min(sessionTotalPages - 1, p + 1))}
+                    disabled={sessionPage >= sessionTotalPages - 1}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

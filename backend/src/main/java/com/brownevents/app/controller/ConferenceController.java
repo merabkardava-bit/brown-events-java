@@ -5,7 +5,6 @@ import com.brownevents.app.entity.Session;
 import com.brownevents.app.service.ConferenceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,11 +12,12 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Tag(name = "Conferences", description = "Create and manage conferences, including their sessions.")
@@ -35,8 +35,9 @@ public class ConferenceController {
     // ── GET /api/conferences ──────────────────────────────────────────────────
 
     @Operation(
-            summary = "List all conferences",
-            description = "Returns every conference stored in the system, regardless of status."
+            summary = "List conferences (paginated)",
+            description = "Returns a page of conferences. Use `page` (0-based) and `size` to paginate. "
+                    + "Requesting a page beyond the last one returns an empty `data` array without an error."
     )
     @ApiResponses({
             @ApiResponse(
@@ -44,13 +45,27 @@ public class ConferenceController {
                     description = "Conferences retrieved successfully.",
                     content = @Content(
                             mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = Conference.class))
+                            schema = @Schema(
+                                    example = "{\"data\":[],\"page\":0,\"size\":12,"
+                                            + "\"totalElements\":45,\"totalPages\":4}"
+                            )
                     )
             )
     })
     @GetMapping
-    public ResponseEntity<List<Conference>> getAllConferences() {
-        return ResponseEntity.ok(conferenceService.getAllConferences());
+    public ResponseEntity<Map<String, Object>> getAllConferences(
+            @Parameter(description = "Zero-based page index.", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of conferences per page.", example = "12")
+            @RequestParam(defaultValue = "12") int size) {
+        Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size));
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", result.getContent());
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        return ResponseEntity.ok(response);
     }
 
     // ── GET /api/conferences/{id} ─────────────────────────────────────────────
@@ -165,8 +180,9 @@ public class ConferenceController {
     // ── GET /api/conferences/{id}/sessions ────────────────────────────────────
 
     @Operation(
-            summary = "List sessions for a conference",
-            description = "Returns all sessions belonging to the specified conference, wrapped in a `data` envelope."
+            summary = "List sessions for a conference (paginated)",
+            description = "Returns a page of sessions belonging to the specified conference. "
+                    + "Requesting a page beyond the last one returns an empty `data` array without an error."
     )
     @ApiResponses({
             @ApiResponse(
@@ -175,12 +191,8 @@ public class ConferenceController {
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    example = "{\"data\": [{\"id\": 10, \"title\": \"Intro to Spring Boot 3\","
-                                            + "\"description\": \"An introductory walkthrough of Spring Boot 3.\","
-                                            + "\"startTime\": \"2025-06-10T09:00:00\", \"endTime\": \"2025-06-10T10:00:00\","
-                                            + "\"capacity\": 120,"
-                                            + "\"speaker\": {\"id\": 3, \"firstName\": \"Ada\", \"lastName\": \"Lovelace\", \"bio\": \"...\", \"email\": \"ada@example.com\"},"
-                                            + "\"room\": {\"id\": 2, \"name\": \"Auditorium A\", \"capacity\": 300, \"location\": \"Building 1, Floor 2\"}}]}"
+                                    example = "{\"data\":[],\"page\":0,\"size\":10,"
+                                            + "\"totalElements\":25,\"totalPages\":3}"
                             )
                     )
             ),
@@ -189,10 +201,18 @@ public class ConferenceController {
     @GetMapping("/{id}/sessions")
     public ResponseEntity<Map<String, Object>> getConferenceSessions(
             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
-            @PathVariable Long id) {
-        List<Session> sessions = conferenceService.getConferenceSessions(id);
+            @PathVariable Long id,
+            @Parameter(description = "Zero-based page index.", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of sessions per page.", example = "10")
+            @RequestParam(defaultValue = "10") int size) {
+        Page<Session> result = conferenceService.getConferenceSessions(id, PageRequest.of(page, size));
         Map<String, Object> response = new HashMap<>();
-        response.put("data", sessions);
+        response.put("data", result.getContent());
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
         return ResponseEntity.ok(response);
     }
 

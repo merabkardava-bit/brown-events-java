@@ -2,11 +2,10 @@ const BASE_URL = 'http://localhost:8080';
 
 console.log('API base URL:', BASE_URL);
 
-export async function getConferences() {
+export async function getConferences(page = 0, size = 12) {
   console.log('fetching conferences');
-  const response = await fetch(`${BASE_URL}/api/conferences`);
-  const data = await response.json();
-  return data;
+  const response = await fetch(`${BASE_URL}/api/conferences?page=${page}&size=${size}`);
+  return response.json();
 }
 
 export async function getConference(id) {
@@ -14,11 +13,12 @@ export async function getConference(id) {
   return response.json();
 }
 
-export async function getConferenceSessions(id) {
-  const response = await fetch(`${BASE_URL}/api/conferences/${id}/sessions`);
+export async function getConferenceSessions(id, page = 0, size = 10) {
+  const response = await fetch(`${BASE_URL}/api/conferences/${id}/sessions?page=${page}&size=${size}`);
   const data = await response.json();
   console.log('sessions response:', data);
-  return data.data || data;
+  // Returns the full paged envelope: { data, page, size, totalElements, totalPages }
+  return data;
 }
 
 export async function getSession(id, conferenceId) {
