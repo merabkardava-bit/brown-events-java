@@ -45,3 +45,17 @@ N sessions. The fix was two changes: marking all three associations `LAZY` in `S
 replacing the derived `findByConferenceId` query in `SessionRepository` with an explicit JPQL
 query using `JOIN FETCH` / `LEFT JOIN FETCH` to load the full object graph in a single round-trip.
 The response data and method signatures stayed identical. I also asked to add comments to the changed parts.
+
+## 2026-09-07
+
+### BEVJ-102 — Pagination
+
+I asked Claude to add real pagination to the conference list and the session list inside a conference,
+with the requirement that the backend must not load all records into memory and the frontend must render
+results in chunks. Claude made the changes across all layers: added a paginated `findPageByConferenceId`
+query to `SessionRepository` with a separate `countQuery` (required because `JOIN FETCH` can't be used
+for the `COUNT(*)` Spring Data needs), updated `ConferenceService` to accept `Pageable` and return
+`Page<T>`, updated both controller endpoints to accept `?page=` and `?size=` params and return a
+`{ data, page, size, totalElements, totalPages }` envelope, and updated the frontend to track page
+state and render Prev/Next controls. The test for `getAllConferences` was also updated to match the
+new pageable signature.
