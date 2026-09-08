@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "runner": "custom",
+  "gates": [
+    {
+      "id": "backend-build",
+      "command": "mvn -f backend/pom.xml clean package -DskipTests",
+      "source": "ci"
+    },
+    {
+      "id": "backend-test",
+      "command": "mvn -f backend/pom.xml test",
+      "source": "ci"
+    },
+    {
+      "id": "frontend-build",
+      "command": "cd frontend && npm ci && npm run build",
+      "source": "ci"
+    }
+  ],
+  "ui_globs": [
+    "\\.(tsx|jsx|css|html|vue|svelte)$",
+    "src/(ui|frontend|components)/"
+  ],
+  "detected_at": "2026-09-09T00:00:00.000Z"
+}
