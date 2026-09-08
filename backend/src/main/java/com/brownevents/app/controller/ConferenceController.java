@@ -63,6 +63,9 @@ public class ConferenceController {
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false) String status) {
+        if (from != null && to != null && from.isAfter(to)) {
+            return ResponseEntity.badRequest().<Map<String, Object>>build();
+        }
         Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size), search, from, to, status);
         Map<String, Object> response = new HashMap<>();
         response.put("data", result.getContent());

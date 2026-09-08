@@ -25,8 +25,9 @@ public class ConferenceService {
     public Page<Conference> getAllConferences(
             Pageable pageable, String search, LocalDate from, LocalDate to, String status) {
         String searchParam = (search != null && !search.isBlank())
-            ? "%" + search.toLowerCase() + "%" : null;
-        return conferenceRepository.findAllFiltered(searchParam, from, to, status, pageable);
+            ? "%" + search.replace("%", "\\%").replace("_", "\\_").toLowerCase() + "%" : null;
+        String statusParam = (status != null) ? status.trim() : null;
+        return conferenceRepository.findAllFiltered(searchParam, from, to, statusParam, pageable);
     }
 
     public Conference getConference(Long id) {

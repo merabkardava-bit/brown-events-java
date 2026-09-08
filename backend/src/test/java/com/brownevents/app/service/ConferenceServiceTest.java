@@ -101,6 +101,36 @@ public class ConferenceServiceTest {
     }
 
     @Test
+    public void getAllConferences_shouldEscapeWildcardsInSearchTerm() {
+        // CR-003: % and _ in the raw search string must be escaped before wrapping in %...%
+        Pageable pageable = PageRequest.of(0, 12);
+        Page<Conference> empty = new PageImpl<>(List.of(), pageable, 0);
+        when(conferenceRepository.findAllFiltered(
+                eq("%50\\%off%"), isNull(), isNull(), isNull(), any(Pageable.class)))
+            .thenReturn(empty);
+
+        conferenceService.getAllConferences(pageable, "50%off", null, null, null);
+
+        verify(conferenceRepository, times(1))
+            .findAllFiltered(eq("%50\\%off%"), isNull(), isNull(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    public void getAllConferences_shouldTrimStatusWhitespace() {
+        // CR-004: status with surrounding whitespace must be trimmed before querying
+        Pageable pageable = PageRequest.of(0, 12);
+        Page<Conference> empty = new PageImpl<>(List.of(), pageable, 0);
+        when(conferenceRepository.findAllFiltered(
+                isNull(), isNull(), isNull(), eq("UPCOMING"), any(Pageable.class)))
+            .thenReturn(empty);
+
+        conferenceService.getAllConferences(pageable, null, null, null, "  UPCOMING  ");
+
+        verify(conferenceRepository, times(1))
+            .findAllFiltered(isNull(), isNull(), isNull(), eq("UPCOMING"), any(Pageable.class));
+    }
+
+    @Test
     public void createConference_shouldCallSaveAndReturnResult() {
         Conference input = new Conference();
         input.setTitle("New Conference");

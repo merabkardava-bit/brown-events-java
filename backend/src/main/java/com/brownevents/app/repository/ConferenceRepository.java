@@ -14,14 +14,14 @@ import java.time.LocalDate;
 public interface ConferenceRepository extends JpaRepository<Conference, Long> {
 
     @Query(value = "SELECT c FROM Conference c WHERE " +
-        "(:search IS NULL OR LOWER(c.title) LIKE :search OR LOWER(c.description) LIKE :search) AND " +
-        "(:from IS NULL OR c.startDate >= :from) AND " +
-        "(:to IS NULL OR c.startDate <= :to) AND " +
+        "(:search IS NULL OR LOWER(c.title) LIKE :search ESCAPE '\\' OR LOWER(c.description) LIKE :search ESCAPE '\\') AND " +
+        "(:from IS NULL OR (c.startDate IS NOT NULL AND c.startDate >= :from)) AND " +
+        "(:to IS NULL OR (c.startDate IS NOT NULL AND c.startDate <= :to)) AND " +
         "(:status IS NULL OR UPPER(c.status) = UPPER(:status))",
         countQuery = "SELECT COUNT(c) FROM Conference c WHERE " +
-        "(:search IS NULL OR LOWER(c.title) LIKE :search OR LOWER(c.description) LIKE :search) AND " +
-        "(:from IS NULL OR c.startDate >= :from) AND " +
-        "(:to IS NULL OR c.startDate <= :to) AND " +
+        "(:search IS NULL OR LOWER(c.title) LIKE :search ESCAPE '\\' OR LOWER(c.description) LIKE :search ESCAPE '\\') AND " +
+        "(:from IS NULL OR (c.startDate IS NOT NULL AND c.startDate >= :from)) AND " +
+        "(:to IS NULL OR (c.startDate IS NOT NULL AND c.startDate <= :to)) AND " +
         "(:status IS NULL OR UPPER(c.status) = UPPER(:status))")
     Page<Conference> findAllFiltered(
         @Param("search") String search,

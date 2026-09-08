@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { getConferences, createConference } from '../api'
 import ConferenceCard from '../components/ConferenceCard'
@@ -17,24 +17,57 @@ export default function ConferenceListPage() {
   // refreshKey forces a re-fetch even when page is already 0 (e.g. after creating a conference)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Filter state
+  // Filter state — rawSearch is the live input value; search is the debounced value sent to the API
+  const [rawSearch, setRawSearch] = useState('')
   const [search, setSearch] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [dateRangeError, setDateRangeError] = useState(null)
 
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Reset to page 0 when any filter changes
-  useEffect(() => { setPage(0) }, [search, fromDate, toDate, statusFilter])
+  // CR-007: Debounce rawSearch → search (300 ms) to avoid a request on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(rawSearch), 300)
+    return () => clearTimeout(timer)
+  }, [rawSearch])
+
+  // CR-005: Track filter version so the fetch effect can detect a mid-transition run
+  // where the filter changed but page has not yet settled to 0.
+  const filterVersion = useRef(0)
+  const lastFetchedFilterVersion = useRef(0)
+
+  // Reset to page 0 when any filter changes; bump filterVersion before setPage so
+  // the fetch effect sees the increment in the same flush.
+  useEffect(() => {
+    filterVersion.current += 1
+    setPage(0)
+  }, [search, fromDate, toDate, statusFilter])
 
   useEffect(() => {
+    // CR-005: A filter just changed and page has not settled to 0 yet — skip this
+    // stale run; the effect will re-fire once page reaches 0.
+    if (page !== 0 && filterVersion.current !== lastFetchedFilterVersion.current) {
+      return
+    }
+    lastFetchedFilterVersion.current = filterVersion.current
+
+    // CR-008: Don't fetch while the date range is invalid; error is shown inline.
+    if (fromDate && toDate && fromDate > toDate) {
+      setLoading(false)
+      return
+    }
+
+    // CR-006: Create an AbortController so in-flight requests are cancelled when
+    // the effect re-runs, preventing stale responses from overwriting fresh ones.
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
-    getConferences(page, 12, search, fromDate, toDate, statusFilter)
+    getConferences(page, 12, search, fromDate, toDate, statusFilter, controller.signal)
       .then(data => {
         setConferences(Array.isArray(data.data) ? data.data : [])
         setTotalPages(data.totalPages ?? 1)
@@ -42,10 +75,34 @@ export default function ConferenceListPage() {
         setLoading(false)
       })
       .catch(err => {
-        setError(err.message || 'Failed to load conferences')
-        setLoading(false)
+        if (err.name !== 'AbortError') {
+          setError(err.message || 'Failed to load conferences')
+          setLoading(false)
+        }
       })
+    return () => controller.abort()
   }, [page, refreshKey, search, fromDate, toDate, statusFilter])
+
+  // CR-008: Validate date range inline so users see immediate feedback
+  function handleFromDateChange(e) {
+    const val = e.target.value
+    setFromDate(val)
+    if (val && toDate && val > toDate) {
+      setDateRangeError('"From" date must not be after "To" date.')
+    } else {
+      setDateRangeError(null)
+    }
+  }
+
+  function handleToDateChange(e) {
+    const val = e.target.value
+    setToDate(val)
+    if (fromDate && val && fromDate > val) {
+      setDateRangeError('"From" date must not be after "To" date.')
+    } else {
+      setDateRangeError(null)
+    }
+  }
 
   function handleFormChange(e) {
     const { name, value } = e.target
@@ -130,24 +187,24 @@ export default function ConferenceListPage() {
         </div>
         <p className="page__subtitle">Browse and register for upcoming technical conferences</p>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: dateRangeError ? '0.5rem' : '1.5rem' }}>
           <input
             type="text"
             placeholder="Search conferences..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={rawSearch}
+            onChange={e => setRawSearch(e.target.value)}
             style={{ flex: '1 1 200px' }}
           />
           <input
             type="date"
             value={fromDate}
-            onChange={e => setFromDate(e.target.value)}
+            onChange={handleFromDateChange}
             title="From date"
           />
           <input
             type="date"
             value={toDate}
-            onChange={e => setToDate(e.target.value)}
+            onChange={handleToDateChange}
             title="To date"
           />
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
@@ -158,6 +215,9 @@ export default function ConferenceListPage() {
             <option value="CANCELLED">CANCELLED</option>
           </select>
         </div>
+        {dateRangeError && (
+          <p style={{ color: 'red', marginBottom: '1rem', fontSize: '0.875rem' }}>{dateRangeError}</p>
+        )}
 
         {showModal && (
           <div className="modal-overlay" onClick={handleCloseModal}>
