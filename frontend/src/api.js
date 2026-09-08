@@ -2,9 +2,14 @@ const BASE_URL = 'http://localhost:8080';
 
 console.log('API base URL:', BASE_URL);
 
-export async function getConferences(page = 0, size = 12) {
+export async function getConferences(page = 0, size = 12, search = '', from = '', to = '', status = '') {
   console.log('fetching conferences');
-  const response = await fetch(`${BASE_URL}/api/conferences?page=${page}&size=${size}`);
+  const params = new URLSearchParams({ page, size });
+  if (search) params.set('search', search);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (status) params.set('status', status);
+  const response = await fetch(`${BASE_URL}/api/conferences?${params.toString()}`);
   return response.json();
 }
 
