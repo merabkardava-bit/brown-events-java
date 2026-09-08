@@ -17,15 +17,24 @@ export default function ConferenceListPage() {
   // refreshKey forces a re-fetch even when page is already 0 (e.g. after creating a conference)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  // Filter state
+  const [search, setSearch] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Reset to page 0 when any filter changes
+  useEffect(() => { setPage(0) }, [search, fromDate, toDate, statusFilter])
+
   useEffect(() => {
     setLoading(true)
     setError(null)
-    getConferences(page)
+    getConferences(page, 12, search, fromDate, toDate, statusFilter)
       .then(data => {
         setConferences(Array.isArray(data.data) ? data.data : [])
         setTotalPages(data.totalPages ?? 1)
@@ -36,7 +45,7 @@ export default function ConferenceListPage() {
         setError(err.message || 'Failed to load conferences')
         setLoading(false)
       })
-  }, [page, refreshKey])
+  }, [page, refreshKey, search, fromDate, toDate, statusFilter])
 
   function handleFormChange(e) {
     const { name, value } = e.target
@@ -121,6 +130,35 @@ export default function ConferenceListPage() {
         </div>
         <p className="page__subtitle">Browse and register for upcoming technical conferences</p>
 
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+          <input
+            type="text"
+            placeholder="Search conferences..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ flex: '1 1 200px' }}
+          />
+          <input
+            type="date"
+            value={fromDate}
+            onChange={e => setFromDate(e.target.value)}
+            title="From date"
+          />
+          <input
+            type="date"
+            value={toDate}
+            onChange={e => setToDate(e.target.value)}
+            title="To date"
+          />
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="UPCOMING">UPCOMING</option>
+            <option value="ONGOING">ONGOING</option>
+            <option value="COMPLETED">COMPLETED</option>
+            <option value="CANCELLED">CANCELLED</option>
+          </select>
+        </div>
+
         {showModal && (
           <div className="modal-overlay" onClick={handleCloseModal}>
             <div className="modal" onClick={e => e.stopPropagation()}>
@@ -172,7 +210,11 @@ export default function ConferenceListPage() {
 
         {conferences.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#666' }}>
-            <p style={{ fontSize: '1.1rem' }}>No conferences found.</p>
+            <p style={{ fontSize: '1.1rem' }}>
+              {(search || fromDate || toDate || statusFilter)
+                ? 'No conferences match your search.'
+                : 'No conferences found.'}
+            </p>
           </div>
         ) : (
           <div className="grid">
