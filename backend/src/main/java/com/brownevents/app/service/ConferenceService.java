@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+
 @Service
 public class ConferenceService {
 
@@ -20,8 +22,11 @@ public class ConferenceService {
         this.sessionRepository = sessionRepository;
     }
 
-    public Page<Conference> getAllConferences(Pageable pageable) {
-        return conferenceRepository.findAll(pageable);
+    public Page<Conference> getAllConferences(
+            Pageable pageable, String search, LocalDate from, LocalDate to, String status) {
+        String searchParam = (search != null && !search.isBlank())
+            ? "%" + search.toLowerCase() + "%" : null;
+        return conferenceRepository.findAllFiltered(searchParam, from, to, status, pageable);
     }
 
     public Conference getConference(Long id) {
