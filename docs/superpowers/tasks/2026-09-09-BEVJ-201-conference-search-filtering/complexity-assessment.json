@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "task": "Add keyword, date-range, and status filter params to GET /api/conferences with pagination; update ConferenceListPage with filter controls",
+  "generated": "2026-09-09T00:00:00Z",
+  "dimensions": {
+    "component_scope":      { "score": 4, "label": "L" },
+    "requirements_clarity": { "score": 3, "label": "M" },
+    "technical_risk":       { "score": 3, "label": "M" },
+    "file_change_estimate": { "score": 3, "label": "M" },
+    "dependencies":         { "score": 1, "label": "XS" },
+    "affected_layers":      { "score": 4, "label": "L" }
+  },
+  "total": 18,
+  "size": "M",
+  "size_legend": {
+    "XS": "6-9 — < half day — plan directly",
+    "S": "10-14 — 1 day — plan directly",
+    "M": "15-20 — 2-3 days — brainstorm first",
+    "L": "21-26 — 4-5 days — brainstorm first",
+    "XL": "27-31 — > 1 sprint — recommend splitting",
+    "XXL": "32-36 — > 1 sprint — must split"
+  },
+  "routing": "brainstorming",
+  "key_reasoning": [
+    {
+      "dimension": "component_scope",
+      "reason": "Five components across 4 layers and 2 subsystems: ConferenceRepository, ConferenceService, ConferenceController (backend chain) plus api.js and ConferenceListPage.jsx (frontend). The bundle M anchor (epmcdme-10203) scores M(3) for a 3-component/3-layer backend-only chain; this task adds a full UI layer and a frontend API module, warranting L(4)."
+    },
+    {
+      "dimension": "affected_layers",
+      "reason": "Four distinct layers touched: DB-Persistence (ConferenceRepository), Service (ConferenceService), API (ConferenceController), UI (ConferenceListPage.jsx + api.js). No schema migration keeps this from reaching XL, but four-layer coordinated change places it at L(4). The L calibration example (epmcdme-10401) scored XL(5) here due to schema migration — absence of that migration is what separates this task from that band."
+    }
+  ],
+  "red_flags_applied": [],
+  "split_recommendation": null
+}

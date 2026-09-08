@@ -1,0 +1,23 @@
+```json
+[
+  {"kind": "story-ac", "item": "GET /api/conferences?search=spring returns conferences matching title or description case-insensitively", "status": "pending-stage-7", "notes": "JPQL LOWER(c.title) LIKE :search OR LOWER(c.description) LIKE :search in ConferenceRepository; service wraps with %..%; runtime DB execution is the remaining proof"},
+  {"kind": "story-ac", "item": "GET /api/conferences?from=2026-01-01&to=2026-06-30 returns conferences whose startDate falls within that range", "status": "pending-stage-7", "notes": "JPQL c.startDate >= :from AND c.startDate <= :to in ConferenceRepository; controller binds LocalDate; runtime DB execution is the remaining proof"},
+  {"kind": "story-ac", "item": "GET /api/conferences?status=UPCOMING returns conferences matching status case-insensitively", "status": "pending-stage-7", "notes": "JPQL UPPER(c.status) = UPPER(:status) in ConferenceRepository; runtime DB execution is the remaining proof"},
+  {"kind": "story-ac", "item": "All four params are independently optional; omitting any applies no filter for that dimension", "status": "pass", "notes": "all four @RequestParam(required = false) in controller; JPQL uses (:param IS NULL OR ...) for each dimension"},
+  {"kind": "story-ac", "item": "Any combination of the four params returns the intersection of their filter results, paginated", "status": "pass", "notes": "JPQL predicates are AND-composed; Pageable passed through to findAllFiltered"},
+  {"kind": "story-ac", "item": "Response envelope shape (data, page, size, totalElements, totalPages) is identical to unfiltered response", "status": "pass", "notes": "controller response-building block is unchanged in the diff; only the service call line changed"},
+  {"kind": "story-ac", "item": "Conference list page has a search text input, two date pickers, and a status dropdown", "status": "pass", "notes": "all four controls present in ConferenceListPage.jsx diff: text input, two <input type=date>, <select> with UPCOMING/ONGOING/COMPLETED/CANCELLED"},
+  {"kind": "story-ac", "item": "Changing any filter resets the displayed page to 1 and re-fetches results", "status": "pass", "notes": "useEffect(() => { setPage(0) }, [search, fromDate, toDate, statusFilter]) added; fetch useEffect deps include all four filter vars"},
+  {"kind": "story-ac", "item": "When the filtered result set is empty, a message is shown (not a blank grid)", "status": "pass", "notes": "ConferenceListPage.jsx: conditional empty-state 'No conferences match your search.' when any filter is active"},
+  {"kind": "story-ac", "item": "Filters and pagination operate correctly together: paginated result reflects the filtered set", "status": "pass", "notes": "getConferences(page, 12, search, fromDate, toDate, statusFilter) passes all params; backend applies filters within the paginated query"},
+  {"kind": "story-ac", "item": "ConferenceServiceTest includes at least one test for keyword match and one for date range filter, both passing", "status": "pending-stage-7", "notes": "getAllConferences_shouldPassFormattedSearchTermToRepository and getAllConferences_shouldPassDateRangeToRepository added; need mvn test run to confirm passing"},
+  {"kind": "spec", "item": "Repository: findAllFiltered JPQL and countQuery match the pinned spec exactly", "status": "pass", "notes": "query in ConferenceRepository.java diff is character-for-character identical to the spec-pinned query"},
+  {"kind": "spec", "item": "Service: non-blank search lowercased and wrapped in %..%; blank or null search passes null to repository", "status": "pass", "notes": "ConferenceService.java: (search != null && !search.isBlank()) ? \"%\" + search.toLowerCase() + \"%\" : null"},
+  {"kind": "spec", "item": "Controller: from and to parsed as LocalDate (ISO-8601); malformed dates yield 400 via Spring default handling", "status": "pass", "notes": "@RequestParam(required = false) LocalDate from/to in ConferenceController.java; Spring MethodArgumentTypeMismatchException handles malformed input"},
+  {"kind": "spec", "item": "api.js: getConferences gains four optional filter params; empty strings omitted from URL", "status": "pass", "notes": "api.js: URLSearchParams built with falsy guards (if (search), if (from), etc.) so empty strings are not appended"},
+  {"kind": "spec", "item": "ConferenceListPage: four state vars initialised to empty string; fetch useEffect deps expanded; filter useEffect calls setPage(0); status dropdown has options for all four documented values", "status": "pass", "notes": "useState('') for all four; [page, refreshKey, search, fromDate, toDate, statusFilter] in fetch effect; dropdown options UPCOMING/ONGOING/COMPLETED/CANCELLED present"}
+]
+```
+
+```markdown
+```

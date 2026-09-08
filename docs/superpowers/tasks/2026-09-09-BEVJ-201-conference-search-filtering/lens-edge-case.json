@@ -1,0 +1,50 @@
+[
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java:87",
+    "trigger_condition": "search term contains LIKE wildcard characters % or _",
+    "guard_snippet": "search.replace(\"%\", \"\\\\%\").replace(\"_\", \"\\\\_\").toLowerCase()",
+    "potential_consequence": "Caller-controlled wildcards widen or narrow result set unexpectedly"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/controller/ConferenceController.java:66",
+    "trigger_condition": "from parameter is a date after the to parameter",
+    "guard_snippet": "if (from != null && to != null && from.isAfter(to)) return ResponseEntity.badRequest().build();",
+    "potential_consequence": "Inverted range silently returns empty page with no error signal to caller"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java:88",
+    "trigger_condition": "status value has leading or trailing whitespace",
+    "guard_snippet": "String statusParam = (status != null) ? status.trim() : null;",
+    "potential_consequence": "UPPER(\" UPCOMING\") != UPPER(\"UPCOMING\"); filter silently returns zero results"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java:51-52",
+    "trigger_condition": "from or to filter applied and a conference has null startDate",
+    "guard_snippet": "(c.startDate IS NULL OR c.startDate >= :from) AND (c.startDate IS NULL OR c.startDate <= :to)",
+    "potential_consequence": "Conferences with no startDate silently vanish from results whenever any date filter is active"
+  },
+  {
+    "location": "frontend/src/pages/ConferenceListPage.jsx:32-48",
+    "trigger_condition": "any filter changes while page state is greater than 0",
+    "guard_snippet": "merge both effects: reset page inside the fetch effect before calling getConferences, or skip fetch until page settles",
+    "potential_consequence": "Spurious fetch fires with new filter + stale page number before page resets to 0"
+  },
+  {
+    "location": "frontend/src/pages/ConferenceListPage.jsx:34-48",
+    "trigger_condition": "filter changes faster than prior fetch resolves (e.g. rapid keystrokes)",
+    "guard_snippet": "const controller = new AbortController(); fetch(url, { signal: controller.signal }); return () => controller.abort();",
+    "potential_consequence": "Stale slow response overwrites newer fast response; wrong result set shown"
+  },
+  {
+    "location": "frontend/src/pages/ConferenceListPage.jsx:247",
+    "trigger_condition": "user types continuously in the search input",
+    "guard_snippet": "debounce setSearch update: useEffect with setTimeout on raw input value, clear on next keystroke",
+    "potential_consequence": "One API call fired per keystroke; server flooded; rapid inflight requests compound race condition"
+  },
+  {
+    "location": "frontend/src/pages/ConferenceListPage.jsx:253-261",
+    "trigger_condition": "user sets fromDate to a date later than toDate",
+    "guard_snippet": "if (fromDate && toDate && fromDate > toDate) show validation message; omit or swap params",
+    "potential_consequence": "Inverted range silently returns empty grid; user has no indication the input is invalid"
+  }
+]
