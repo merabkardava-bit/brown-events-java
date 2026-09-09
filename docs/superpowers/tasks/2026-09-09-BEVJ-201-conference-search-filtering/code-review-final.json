@@ -1,0 +1,219 @@
+{
+  "decision": "request-changes",
+  "rationale": "8 blocking defects introduced by this change, all verified at their call sites across backend filtering logic and frontend state management; 0 deferred, 0 dismissed. Both applicable lenses (edge-case, acceptance) ran cleanly with no truncation; standards not assessed per profile (no guides configured).",
+  "confidence": "high",
+  "risk_flags": [],
+  "business_review": [
+    {
+      "kind": "story-ac",
+      "item": "GET /api/conferences?search=spring returns conferences matching title or description case-insensitively",
+      "status": "pending-stage-7",
+      "notes": "JPQL LOWER(c.title) LIKE :search OR LOWER(c.description) LIKE :search present; runtime DB execution is the remaining proof"
+    },
+    {
+      "kind": "story-ac",
+      "item": "GET /api/conferences?from=2026-01-01&to=2026-06-30 returns conferences whose startDate falls within that range",
+      "status": "pending-stage-7",
+      "notes": "JPQL c.startDate >= :from AND c.startDate <= :to present; runtime DB execution is the remaining proof"
+    },
+    {
+      "kind": "story-ac",
+      "item": "GET /api/conferences?status=UPCOMING returns conferences matching status case-insensitively",
+      "status": "pending-stage-7",
+      "notes": "JPQL UPPER(c.status) = UPPER(:status) present; runtime DB execution is the remaining proof"
+    },
+    {
+      "kind": "story-ac",
+      "item": "All four params are independently optional; omitting any applies no filter for that dimension",
+      "status": "pass",
+      "notes": "all four @RequestParam(required = false) in controller; JPQL uses (:param IS NULL OR ...) for each dimension"
+    },
+    {
+      "kind": "story-ac",
+      "item": "Any combination of the four params returns the intersection of their filter results, paginated",
+      "status": "pass",
+      "notes": "JPQL predicates are AND-composed; Pageable passed through to findAllFiltered"
+    },
+    {
+      "kind": "story-ac",
+      "item": "Response envelope shape (data, page, size, totalElements, totalPages) is identical to unfiltered response",
+      "status": "pass",
+      "notes": "controller response-building block is unchanged in the diff; only the service call line changed"
+    },
+    {
+      "kind": "story-ac",
+      "item": "Conference list page has a search text input, two date pickers, and a status dropdown",
+      "status": "pass",
+      "notes": "all four controls present in ConferenceListPage.jsx: text input, two date inputs, select with UPCOMING/ONGOING/COMPLETED/CANCELLED"
+    },
+    {
+      "kind": "story-ac",
+      "item": "Changing any filter resets the displayed page to 1 and re-fetches results",
+      "status": "pass",
+      "notes": "useEffect(() => { setPage(0) }, [search, fromDate, toDate, statusFilter]) added; fetch deps include all four filter vars"
+    },
+    {
+      "kind": "story-ac",
+      "item": "When the filtered result set is empty, a message is shown (not a blank grid)",
+      "status": "pass",
+      "notes": "ConferenceListPage.jsx: conditional empty-state 'No conferences match your search.' when any filter is active"
+    },
+    {
+      "kind": "story-ac",
+      "item": "Filters and pagination operate correctly together: paginated result reflects the filtered set",
+      "status": "pass",
+      "notes": "getConferences(page, 12, search, fromDate, toDate, statusFilter) passes all params; backend applies filters within the paginated query"
+    },
+    {
+      "kind": "story-ac",
+      "item": "ConferenceServiceTest includes at least one test for keyword match and one for date range filter, both passing",
+      "status": "pending-stage-7",
+      "notes": "test methods getAllConferences_shouldPassFormattedSearchTermToRepository and getAllConferences_shouldPassDateRangeToRepository added; need mvn test run to confirm passing"
+    },
+    {
+      "kind": "spec",
+      "item": "Repository: findAllFiltered JPQL and countQuery match the pinned spec exactly",
+      "status": "pass",
+      "notes": "query in ConferenceRepository.java is character-for-character identical to the spec-pinned query"
+    },
+    {
+      "kind": "spec",
+      "item": "Service: non-blank search lowercased and wrapped in %..%; blank or null search passes null to repository",
+      "status": "pass",
+      "notes": "ConferenceService.java: (search != null && !search.isBlank()) ? \"%\" + search.toLowerCase() + \"%\" : null"
+    },
+    {
+      "kind": "spec",
+      "item": "Controller: from and to parsed as LocalDate (ISO-8601); malformed dates yield 400 via Spring default handling",
+      "status": "pass",
+      "notes": "@RequestParam(required = false) LocalDate from/to; Spring MethodArgumentTypeMismatchException handles malformed input"
+    },
+    {
+      "kind": "spec",
+      "item": "api.js: getConferences gains four optional filter params; empty strings omitted from URL",
+      "status": "pass",
+      "notes": "api.js: URLSearchParams built with falsy guards so empty strings are not appended"
+    },
+    {
+      "kind": "spec",
+      "item": "ConferenceListPage: four state vars initialised to empty string; fetch useEffect deps expanded; filter useEffect calls setPage(0); status dropdown has options for all four documented values",
+      "status": "pass",
+      "notes": "useState('') for all four; [page, refreshKey, search, fromDate, toDate, statusFilter] in fetch effect; dropdown options present"
+    }
+  ],
+  "standards_review": [
+    {
+      "kind": "commit-format",
+      "status": "na",
+      "notes": "no standards guide configured for this profile"
+    },
+    {
+      "kind": "code-quality",
+      "status": "na",
+      "notes": "no standards guide configured for this profile"
+    },
+    {
+      "kind": "security",
+      "status": "na",
+      "notes": "no standards guide configured for this profile"
+    }
+  ],
+  "findings": [
+    {
+      "id": "CR-001",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/controller/ConferenceController.java",
+      "line": 66,
+      "title": "Inverted date range silently returns empty result",
+      "problem": "No validation that from is before to; when from > to the JPQL predicate (c.startDate >= :from AND c.startDate <= :to) forms an impossible range and produces an empty page.",
+      "impact": "Callers passing an inverted range receive a silent empty page with 200 OK and no indication the input is invalid; indistinguishable from a genuine no-match.",
+      "recommendation": "Before delegating to the service, check if (from != null && to != null && from.isAfter(to)) and return ResponseEntity.badRequest().build()."
+    },
+    {
+      "id": "CR-002",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java",
+      "line": 18,
+      "title": "Null startDate conferences vanish under any date filter",
+      "problem": "Conference.startDate carries no NOT NULL constraint; when any date filter is active the JPQL predicate (c.startDate >= :from) evaluates to NULL for conferences with a null startDate, excluding them.",
+      "impact": "Any conference created without a startDate disappears from all filtered result sets, making it unreachable through the search UI.",
+      "recommendation": "Add null-safe JPQL predicates: (:from IS NULL OR (c.startDate IS NOT NULL AND c.startDate >= :from)) and the equivalent for :to. Alternatively enforce @Column(nullable = false) at the entity level."
+    },
+    {
+      "id": "CR-003",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 28,
+      "title": "Search term LIKE wildcards not escaped",
+      "problem": "The service wraps the user-supplied search string in %...% without escaping literal % or _ characters. These are interpreted as JPQL LIKE wildcards in the query.",
+      "impact": "A search containing % returns all conferences regardless of title or description; _ matches any single character, widening or narrowing result sets in caller-controlled ways.",
+      "recommendation": "Escape before wrapping: search.replace(\"%\", \"\\\\%\").replace(\"_\", \"\\\\_\").toLowerCase(), and add ESCAPE '\\\\' to the JPQL LIKE clause."
+    },
+    {
+      "id": "CR-004",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 29,
+      "title": "Status parameter not trimmed before query",
+      "problem": "The status param is forwarded to findAllFiltered without trimming. UPPER(\" UPCOMING\") does not equal UPPER(\"UPCOMING\") in SQL, so any value with leading or trailing whitespace silently returns zero results.",
+      "impact": "Any client whose URL-encoding or UI produces a padded status string receives a silently empty result set with no error signal.",
+      "recommendation": "Trim before delegating: String statusParam = (status != null) ? status.trim() : null; then pass statusParam to findAllFiltered."
+    },
+    {
+      "id": "CR-005",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "line": 32,
+      "title": "Filter change fires fetch with stale page number",
+      "problem": "Two separate useEffect calls handle filter reset (setPage(0)) and data fetch. When a filter changes while page > 0 both effects fire in the same render; the fetch runs with the old page value before the state update settles.",
+      "impact": "A spurious request fires with the new filter criteria but the stale page index; if this response arrives after the page-0 response it overwrites the correct result set, showing users the wrong page of data.",
+      "recommendation": "Merge the reset into the fetch effect by reading a ref that is reset synchronously before calling getConferences, or guard the fetch so it waits until page has settled to 0 after a filter change."
+    },
+    {
+      "id": "CR-006",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "line": 34,
+      "title": "Fetch has no AbortController cleanup",
+      "problem": "The fetch useEffect returns no cleanup function. Any in-flight request continues running after the component re-renders; a slow response from a prior filter state can resolve after the current one and overwrite it via setConferences.",
+      "impact": "Under normal typing speed or variable network latency, users see results from a superseded filter with no loading indicator, because the newer fetch already completed.",
+      "recommendation": "Create an AbortController at the top of the effect, pass { signal: controller.signal } to the fetch call, and return () => controller.abort() as the cleanup. Suppress AbortError in the catch handler."
+    },
+    {
+      "id": "CR-007",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "line": 138,
+      "title": "No debounce on search input",
+      "problem": "The search input's onChange handler calls setSearch on every keystroke. Since search is a fetch effect dependency, each keystroke triggers a new API call immediately.",
+      "impact": "A 10-character query fires 10 sequential requests; combined with the missing AbortController (CR-006) this maximises the chance of stale data being displayed and adds unnecessary load to the backend.",
+      "recommendation": "Buffer the raw input in a separate state variable and propagate to setSearch via a useEffect with a setTimeout of 300-500 ms, cleared on each keystroke."
+    },
+    {
+      "id": "CR-008",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "line": 143,
+      "title": "Frontend accepts inverted date range without user feedback",
+      "problem": "The fromDate and toDate inputs propagate directly to filter state with no validation. When fromDate > toDate the backend receives an impossible range and silently returns an empty page.",
+      "impact": "Users see an empty conference grid with 'No conferences match your search.' and cannot distinguish it from a genuine no-match; the invalid input goes unreported.",
+      "recommendation": "After either date input changes, check if fromDate && toDate && fromDate > toDate and display an inline validation message; omit the date params (or swap them) when passing to getConferences while the range is invalid."
+    }
+  ]
+}

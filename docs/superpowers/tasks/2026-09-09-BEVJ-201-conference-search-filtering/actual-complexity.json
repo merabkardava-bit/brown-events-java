@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "generated": "2026-09-09T00:00:00Z",
+  "dimensions": {
+    "component_scope":      { "score": 4, "label": "L" },
+    "requirements_clarity": { "score": 2, "label": "S" },
+    "technical_risk":       { "score": 4, "label": "L" },
+    "file_change_estimate": { "score": 3, "label": "M" },
+    "dependencies":         { "score": 1, "label": "XS" },
+    "affected_layers":      { "score": 4, "label": "L" }
+  },
+  "total": 18,
+  "size": "M",
+  "band_range": "15-20",
+  "files_changed": 6,
+  "routing": "brainstorming",
+  "key_reasoning": [
+    {
+      "dimension": "component_scope",
+      "reason": "Five components modified across four architectural layers: ConferenceController (API), ConferenceRepository (Persistence), ConferenceService (Service), api.js (UI/API client), and ConferenceListPage.jsx (UI). Exceeds the 3-4 component L threshold; the UI subsystem plus the full backend stack makes this the widest scope dimension."
+    },
+    {
+      "dimension": "technical_risk",
+      "reason": "LIKE wildcard sanitization (% and _ escaping) is implemented inline in ConferenceService.getAllConferences with no pre-existing reusable utility in the codebase for this pattern. The JPQL ESCAPE clause and the service-level replace chain are both new. The sanitization auto-bump floor of L (4) applies. The debounce and AbortController patterns are well-established and carry no additional risk."
+    },
+    {
+      "dimension": "affected_layers",
+      "reason": "All four layers in scope: UI (ConferenceListPage.jsx — filter controls, debounce, date range validation), API (ConferenceController — new query params, date range guard), Service (ConferenceService — wildcard escaping, param forwarding), DB-Persistence (ConferenceRepository — new JPQL findAllFiltered query with ESCAPE clause). No schema migration."
+    }
+  ],
+  "red_flags_applied": [
+    "Technical Risk floor of L (4) applied: LIKE wildcard sanitization (% and _ escaping) introduced inline in ConferenceService with no existing reusable utility covering this injection surface in the codebase."
+  ],
+  "split_recommendation": null
+}

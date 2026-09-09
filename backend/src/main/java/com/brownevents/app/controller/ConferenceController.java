@@ -17,6 +17,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,8 +60,15 @@ public class ConferenceController {
             @Parameter(description = "Zero-based page index.", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Number of conferences per page.", example = "12")
-            @RequestParam(defaultValue = "12") int size) {
-        Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size));
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String status) {
+        if (from != null && to != null && from.isAfter(to)) {
+            return ResponseEntity.badRequest().<Map<String, Object>>build();
+        }
+        Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size), search, from, to, status);
         Map<String, Object> response = new HashMap<>();
         response.put("data", result.getContent());
         response.put("page", result.getNumber());

@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "branch": "BEVJ-201-converence-search-filtering",
+  "head": "cd28536522b877838f80c7baaf97e4651a887b7d",
+  "runner": "custom",
+  "started_at": "2026-09-09T01:51:00.000Z",
+  "completed_at": "2026-09-09T01:52:10.000Z",
+  "status": "PASSED",
+  "drift_detected": false,
+  "gates": [
+    {
+      "id": "backend-build",
+      "source": "ci",
+      "status": "PASS",
+      "duration_ms": 7469,
+      "command": "mvn -f backend/pom.xml clean package -DskipTests",
+      "exit_code": 0
+    },
+    {
+      "id": "backend-test",
+      "source": "ci",
+      "status": "PASS",
+      "duration_ms": 7435,
+      "command": "mvn -f backend/pom.xml test",
+      "exit_code": 0
+    },
+    {
+      "id": "frontend-build",
+      "source": "ci",
+      "status": "PASS",
+      "duration_ms": 8146,
+      "command": "cd frontend && npm ci && npm run build",
+      "exit_code": 0
+    },
+    {
+      "id": "ui",
+      "source": "ci",
+      "status": "SKIPPED",
+      "duration_ms": 0,
+      "command": "N/A",
+      "exit_code": null,
+      "notes": "UI surface changed (frontend/src/pages/ConferenceListPage.jsx) but no configured UI test script in frontend/package.json; browser verification is a separate caller decision."
+    },
+    {
+      "id": "docker-backend",
+      "source": "ci",
+      "status": "N/A",
+      "duration_ms": 0,
+      "command": "docker build -t $DOCKER_IMAGE/backend:$CI_COMMIT_SHORT_SHA ./backend",
+      "exit_code": null,
+      "notes": "CI job has `only: main` restriction and requires $CI_REGISTRY_USER, $CI_REGISTRY_PASSWORD, $CI_REGISTRY, $CI_REGISTRY_IMAGE credentials not available locally."
+    },
+    {
+      "id": "docker-frontend",
+      "source": "ci",
+      "status": "N/A",
+      "duration_ms": 0,
+      "command": "docker build -t $DOCKER_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend",
+      "exit_code": null,
+      "notes": "CI job has `only: main` restriction and requires $CI_REGISTRY_USER, $CI_REGISTRY_PASSWORD, $CI_REGISTRY, $CI_REGISTRY_IMAGE credentials not available locally."
+    }
+  ],
+  "failures": {}
+}

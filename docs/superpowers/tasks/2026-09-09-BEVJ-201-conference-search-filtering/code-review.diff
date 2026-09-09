@@ -1,0 +1,286 @@
+diff --git a/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java b/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
+index 977eade..6935446 100644
+--- a/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
++++ b/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
+@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+ 
++import java.time.LocalDate;
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+@@ -57,8 +58,12 @@ public class ConferenceController {
+             @Parameter(description = "Zero-based page index.", example = "0")
+             @RequestParam(defaultValue = "0") int page,
+             @Parameter(description = "Number of conferences per page.", example = "12")
+-            @RequestParam(defaultValue = "12") int size) {
+-        Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size));
++            @RequestParam(defaultValue = "12") int size,
++            @RequestParam(required = false) String search,
++            @RequestParam(required = false) LocalDate from,
++            @RequestParam(required = false) LocalDate to,
++            @RequestParam(required = false) String status) {
++        Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size), search, from, to, status);
+         Map<String, Object> response = new HashMap<>();
+         response.put("data", result.getContent());
+         response.put("page", result.getNumber());
+diff --git a/backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java b/backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java
+index 6464ff9..0fdd18d 100644
+--- a/backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java
++++ b/backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java
+@@ -1,9 +1,32 @@
+ package com.brownevents.app.repository;
+ 
+ import com.brownevents.app.entity.Conference;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ import org.springframework.stereotype.Repository;
+ 
++import java.time.LocalDate;
++
+ @Repository
+ public interface ConferenceRepository extends JpaRepository<Conference, Long> {
++
++    @Query(value = "SELECT c FROM Conference c WHERE " +
++        "(:search IS NULL OR LOWER(c.title) LIKE :search OR LOWER(c.description) LIKE :search) AND " +
++        "(:from IS NULL OR c.startDate >= :from) AND " +
++        "(:to IS NULL OR c.startDate <= :to) AND " +
++        "(:status IS NULL OR UPPER(c.status) = UPPER(:status))",
++        countQuery = "SELECT COUNT(c) FROM Conference c WHERE " +
++        "(:search IS NULL OR LOWER(c.title) LIKE :search OR LOWER(c.description) LIKE :search) AND " +
++        "(:from IS NULL OR c.startDate >= :from) AND " +
++        "(:to IS NULL OR c.startDate <= :to) AND " +
++        "(:status IS NULL OR UPPER(c.status) = UPPER(:status))")
++    Page<Conference> findAllFiltered(
++        @Param("search") String search,
++        @Param("from") LocalDate from,
++        @Param("to") LocalDate to,
++        @Param("status") String status,
++        Pageable pageable);
+ }
+diff --git a/backend/src/main/java/com/brownevents/app/service/ConferenceService.java b/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
+index 0bc486f..025f267 100644
+--- a/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
++++ b/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
+@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.stereotype.Service;
+ 
++import java.time.LocalDate;
++
+ @Service
+ public class ConferenceService {
+ 
+@@ -20,8 +22,11 @@ public class ConferenceService {
+         this.sessionRepository = sessionRepository;
+     }
+ 
+-    public Page<Conference> getAllConferences(Pageable pageable) {
+-        return conferenceRepository.findAll(pageable);
++    public Page<Conference> getAllConferences(
++            Pageable pageable, String search, LocalDate from, LocalDate to, String status) {
++        String searchParam = (search != null && !search.isBlank())
++            ? "%" + search.toLowerCase() + "%" : null;
++        return conferenceRepository.findAllFiltered(searchParam, from, to, status, pageable);
+     }
+ 
+     public Conference getConference(Long id) {
+diff --git a/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java b/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java
+index d3af607..a88f6fb 100644
+--- a/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java
++++ b/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java
+@@ -13,12 +13,15 @@ import org.springframework.data.domain.PageImpl;
+ import org.springframework.data.domain.PageRequest;
+ import org.springframework.data.domain.Pageable;
+ 
++import java.time.LocalDate;
+ import java.util.Arrays;
+ import java.util.List;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertNotNull;
+ import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.ArgumentMatchers.isNull;
+ import static org.mockito.Mockito.*;
+ 
+ @ExtendWith(MockitoExtension.class)
+@@ -33,6 +36,47 @@ public class ConferenceServiceTest {
+     @InjectMocks
+     private ConferenceService conferenceService;
+ 
++    @Test
++    public void getAllConferences_shouldPassFormattedSearchTermToRepository() {
++        Conference conf = new Conference();
++        conf.setId(1L);
++        conf.setTitle("Spring Tech Summit");
++        Pageable pageable = PageRequest.of(0, 12);
++        Page<Conference> expected = new PageImpl<>(List.of(conf), pageable, 1);
++        when(conferenceRepository.findAllFiltered(
++                eq("%spring%"), isNull(), isNull(), isNull(), any(Pageable.class)))
++            .thenReturn(expected);
++
++        Page<Conference> result = conferenceService.getAllConferences(pageable, "spring", null, null, null);
++
++        assertNotNull(result);
++        assertEquals(1, result.getTotalElements());
++        assertEquals("Spring Tech Summit", result.getContent().get(0).getTitle());
++        verify(conferenceRepository, times(1))
++            .findAllFiltered(eq("%spring%"), isNull(), isNull(), isNull(), any(Pageable.class));
++    }
++
++    @Test
++    public void getAllConferences_shouldPassDateRangeToRepository() {
++        Conference conf = new Conference();
++        conf.setId(2L);
++        conf.setTitle("Java Developer Days");
++        Pageable pageable = PageRequest.of(0, 12);
++        LocalDate from = LocalDate.of(2026, 1, 1);
++        LocalDate to = LocalDate.of(2026, 6, 30);
++        Page<Conference> expected = new PageImpl<>(List.of(conf), pageable, 1);
++        when(conferenceRepository.findAllFiltered(
++                isNull(), eq(from), eq(to), isNull(), any(Pageable.class)))
++            .thenReturn(expected);
++
++        Page<Conference> result = conferenceService.getAllConferences(pageable, null, from, to, null);
++
++        assertNotNull(result);
++        assertEquals(1, result.getTotalElements());
++        verify(conferenceRepository, times(1))
++            .findAllFiltered(isNull(), eq(from), eq(to), isNull(), any(Pageable.class));
++    }
++
+     @Test
+     public void getAllConferences_shouldReturnAllConferences() {
+         Conference conf1 = new Conference();
+@@ -46,14 +90,14 @@ public class ConferenceServiceTest {
+         List<Conference> conferenceList = Arrays.asList(conf1, conf2);
+         Pageable pageable = PageRequest.of(0, 12);
+         Page<Conference> expected = new PageImpl<>(conferenceList, pageable, conferenceList.size());
+-        when(conferenceRepository.findAll(any(Pageable.class))).thenReturn(expected);
++        when(conferenceRepository.findAllFiltered(isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(expected);
+ 
+-        Page<Conference> result = conferenceService.getAllConferences(pageable);
++        Page<Conference> result = conferenceService.getAllConferences(pageable, null, null, null, null);
+ 
+         assertNotNull(result);
+         assertEquals(2, result.getTotalElements());
+         assertEquals("Spring Tech Summit 2024", result.getContent().get(0).getTitle());
+-        verify(conferenceRepository, times(1)).findAll(any(Pageable.class));
++        verify(conferenceRepository, times(1)).findAllFiltered(isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+     }
+ 
+     @Test
+diff --git a/frontend/src/api.js b/frontend/src/api.js
+index 221ef2a..b5f3b03 100644
+--- a/frontend/src/api.js
++++ b/frontend/src/api.js
+@@ -2,9 +2,14 @@ const BASE_URL = 'http://localhost:8080';
+ 
+ console.log('API base URL:', BASE_URL);
+ 
+-export async function getConferences(page = 0, size = 12) {
++export async function getConferences(page = 0, size = 12, search = '', from = '', to = '', status = '') {
+   console.log('fetching conferences');
+-  const response = await fetch(`${BASE_URL}/api/conferences?page=${page}&size=${size}`);
++  const params = new URLSearchParams({ page, size });
++  if (search) params.set('search', search);
++  if (from) params.set('from', from);
++  if (to) params.set('to', to);
++  if (status) params.set('status', status);
++  const response = await fetch(`${BASE_URL}/api/conferences?${params.toString()}`);
+   return response.json();
+ }
+ 
+diff --git a/frontend/src/pages/ConferenceListPage.jsx b/frontend/src/pages/ConferenceListPage.jsx
+index 64d7724..1d06fe7 100644
+--- a/frontend/src/pages/ConferenceListPage.jsx
++++ b/frontend/src/pages/ConferenceListPage.jsx
+@@ -17,15 +17,24 @@ export default function ConferenceListPage() {
+   // refreshKey forces a re-fetch even when page is already 0 (e.g. after creating a conference)
+   const [refreshKey, setRefreshKey] = useState(0)
+ 
++  // Filter state
++  const [search, setSearch] = useState('')
++  const [fromDate, setFromDate] = useState('')
++  const [toDate, setToDate] = useState('')
++  const [statusFilter, setStatusFilter] = useState('')
++
+   const [showModal, setShowModal] = useState(false)
+   const [form, setForm] = useState(EMPTY_FORM)
+   const [formError, setFormError] = useState(null)
+   const [submitting, setSubmitting] = useState(false)
+ 
++  // Reset to page 0 when any filter changes
++  useEffect(() => { setPage(0) }, [search, fromDate, toDate, statusFilter])
++
+   useEffect(() => {
+     setLoading(true)
+     setError(null)
+-    getConferences(page)
++    getConferences(page, 12, search, fromDate, toDate, statusFilter)
+       .then(data => {
+         setConferences(Array.isArray(data.data) ? data.data : [])
+         setTotalPages(data.totalPages ?? 1)
+@@ -36,7 +45,7 @@ export default function ConferenceListPage() {
+         setError(err.message || 'Failed to load conferences')
+         setLoading(false)
+       })
+-  }, [page, refreshKey])
++  }, [page, refreshKey, search, fromDate, toDate, statusFilter])
+ 
+   function handleFormChange(e) {
+     const { name, value } = e.target
+@@ -121,6 +130,35 @@ export default function ConferenceListPage() {
+         </div>
+         <p className="page__subtitle">Browse and register for upcoming technical conferences</p>
+ 
++        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
++          <input
++            type="text"
++            placeholder="Search conferences..."
++            value={search}
++            onChange={e => setSearch(e.target.value)}
++            style={{ flex: '1 1 200px' }}
++          />
++          <input
++            type="date"
++            value={fromDate}
++            onChange={e => setFromDate(e.target.value)}
++            title="From date"
++          />
++          <input
++            type="date"
++            value={toDate}
++            onChange={e => setToDate(e.target.value)}
++            title="To date"
++          />
++          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
++            <option value="">All statuses</option>
++            <option value="UPCOMING">UPCOMING</option>
++            <option value="ONGOING">ONGOING</option>
++            <option value="COMPLETED">COMPLETED</option>
++            <option value="CANCELLED">CANCELLED</option>
++          </select>
++        </div>
++
+         {showModal && (
+           <div className="modal-overlay" onClick={handleCloseModal}>
+             <div className="modal" onClick={e => e.stopPropagation()}>
+@@ -172,7 +210,11 @@ export default function ConferenceListPage() {
+ 
+         {conferences.length === 0 ? (
+           <div style={{ textAlign: 'center', padding: '60px 0', color: '#666' }}>
+-            <p style={{ fontSize: '1.1rem' }}>No conferences found.</p>
++            <p style={{ fontSize: '1.1rem' }}>
++              {(search || fromDate || toDate || statusFilter)
++                ? 'No conferences match your search.'
++                : 'No conferences found.'}
++            </p>
+           </div>
+         ) : (
+           <div className="grid">

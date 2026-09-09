@@ -1,0 +1,58 @@
+{
+  "findings": [
+    {
+      "id": "CR-001",
+      "status": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/controller/ConferenceController.java",
+      "evidence": "Added guard before service call: if (from != null && to != null && from.isAfter(to)) return ResponseEntity.badRequest().<Map<String, Object>>build();"
+    },
+    {
+      "id": "CR-002",
+      "status": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java",
+      "evidence": "Date predicates changed to null-safe form: (:from IS NULL OR (c.startDate IS NOT NULL AND c.startDate >= :from)) in both value and countQuery."
+    },
+    {
+      "id": "CR-003",
+      "status": "fixed",
+      "files": [
+        "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+        "backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java"
+      ],
+      "evidence": "Service escapes % and _ before wrapping: search.replace(\"%\", \"\\\\%\").replace(\"_\", \"\\\\_\").toLowerCase(). JPQL LIKE clauses updated to include ESCAPE '\\\\'. Test getAllConferences_shouldEscapeWildcardsInSearchTerm added and GREEN."
+    },
+    {
+      "id": "CR-004",
+      "status": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "evidence": "status.trim() applied before passing to repository: String statusParam = (status != null) ? status.trim() : null. Test getAllConferences_shouldTrimStatusWhitespace added and GREEN."
+    },
+    {
+      "id": "CR-005",
+      "status": "fixed",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "evidence": "Added filterVersion and lastFetchedFilterVersion refs. Fetch effect guards with: if (page !== 0 && filterVersion.current !== lastFetchedFilterVersion.current) return. Prevents fetching with stale page when filter changes while page > 0."
+    },
+    {
+      "id": "CR-006",
+      "status": "fixed",
+      "files": [
+        "frontend/src/pages/ConferenceListPage.jsx",
+        "frontend/src/api.js"
+      ],
+      "evidence": "AbortController created in fetch effect; signal passed to getConferences (api.js updated with optional signal param); cleanup returns controller.abort(); AbortError suppressed in catch."
+    },
+    {
+      "id": "CR-007",
+      "status": "fixed",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "evidence": "rawSearch state holds live input; 300 ms debounce useEffect propagates to search state. Fetch effect depends on search (debounced), not rawSearch."
+    },
+    {
+      "id": "CR-008",
+      "status": "fixed",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "evidence": "handleFromDateChange and handleToDateChange set dateRangeError when fromDate > toDate; error rendered inline in red. Fetch effect skips request (setLoading(false); return) while range is invalid."
+    }
+  ]
+}

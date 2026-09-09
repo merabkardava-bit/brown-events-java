@@ -1,0 +1,32 @@
+[
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java:29",
+    "trigger_condition": "caller sends ?status= (empty string); trim() leaves it as \"\" not null",
+    "guard_snippet": "String statusParam = (status != null && !status.isBlank()) ? status.trim() : null;",
+    "potential_consequence": "JPQL filters UPPER(c.status)=UPPER(''), returning zero results instead of all conferences"
+  },
+  {
+    "location": "frontend/src/api.js:13 + backend/src/main/java/com/brownevents/app/controller/ConferenceController.java:69",
+    "trigger_condition": "from.isAfter(to) triggers .build() (empty body); api.js calls response.json() unconditionally",
+    "guard_snippet": "if (!response.ok) throw new Error(`HTTP ${response.status}`); before response.json()",
+    "potential_consequence": "SyntaxError: Unexpected end of JSON input surfaces instead of a date-range validation message"
+  },
+  {
+    "location": "frontend/src/pages/ConferenceListPage.jsx:60-63",
+    "trigger_condition": "fromDate > toDate triggers early return; setConferences([]) is never called",
+    "guard_snippet": "setConferences([]); setLoading(false); return",
+    "potential_consequence": "Stale conference cards from prior fetch remain visible alongside the inline date-range error"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java:55-56",
+    "trigger_condition": "multi-day conference: startDate before :from but endDate within or after range",
+    "guard_snippet": "OR (c.endDate IS NOT NULL AND c.endDate >= :from AND (:to IS NULL OR c.startDate <= :to))",
+    "potential_consequence": "In-progress or spanning conferences silently excluded from date-filtered results"
+  },
+  {
+    "location": "backend/src/test/java/com/brownevents/app/controller/ConferenceControllerTest.java:133-142",
+    "trigger_condition": "only 200 (valid range) path tested; from > to branch has no coverage",
+    "guard_snippet": "mockMvc.perform(get(\"/api/conferences\").param(\"from\",\"2026-12-31\").param(\"to\",\"2026-01-01\")).andExpect(status().isBadRequest())",
+    "potential_consequence": "The primary bug fix (BEVJ-201 date-filter exception) can be silently regressed"
+  }
+]

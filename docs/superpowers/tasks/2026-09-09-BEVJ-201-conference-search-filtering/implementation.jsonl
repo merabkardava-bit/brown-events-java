@@ -1,0 +1,5 @@
+{"task_id":"task-1","status":"done","commit":"6ac7b0f","test_command":"mvn compile"}
+{"task_id":"task-2","status":"done","commit":"3df7eab","test_command":"mvn test -Dtest=ConferenceServiceTest"}
+{"task_id":"task-3","status":"done","commit":"6ae9417","test_command":"mvn test"}
+{"task_id":"task-4","status":"done","commit":"8b3b9e9","test_command":"n/a (no frontend tests)"}
+{"task_id":"task-5","status":"done","commit":"6da5dd4","test_command":"n/a (no frontend tests)"}

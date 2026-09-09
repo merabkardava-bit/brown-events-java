@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "generated": "2026-09-09T00:00:00Z",
+  "dimensions": {
+    "component_scope":      { "score": 4, "label": "L" },
+    "requirements_clarity": { "score": 2, "label": "S" },
+    "technical_risk":       { "score": 4, "label": "L" },
+    "file_change_estimate": { "score": 4, "label": "L" },
+    "dependencies":         { "score": 1, "label": "XS" },
+    "affected_layers":      { "score": 4, "label": "L" }
+  },
+  "total": 19,
+  "size": "M",
+  "band_range": "15-20",
+  "files_changed": 7,
+  "routing": "brainstorming",
+  "key_reasoning": [
+    {
+      "dimension": "component_scope",
+      "reason": "Full-stack change across 5 components: ConferenceController, ConferenceService, ConferenceRepository on the backend plus api.js and ConferenceListPage.jsx on the frontend — 4 distinct layers touched."
+    },
+    {
+      "dimension": "technical_risk",
+      "reason": "ConferenceService implements inline LIKE wildcard escaping (% and _ escaped before wrapping in %) with no pre-existing reusable sanitization util in the codebase — injection-surface floor applied. Additionally, the JPQL null-date workaround (cast(:from as date) IS NULL) is a non-trivial Hibernate pattern."
+    },
+    {
+      "dimension": "file_change_estimate",
+      "reason": "7 files changed per diffstat (275 insertions, 15 deletions), spread across 7 directories spanning backend controller, service, repository, two test locations, and frontend api/page layers."
+    },
+    {
+      "dimension": "affected_layers",
+      "reason": "UI (ConferenceListPage.jsx, api.js), API (ConferenceController), Service (ConferenceService), and DB-Persistence (ConferenceRepository JPQL query) — 4 of the 6 taxonomy layers, no schema migration, no external integrations."
+    }
+  ],
+  "red_flags_applied": [
+    "Technical Risk floor raised to L (4): LIKE wildcard sanitization implemented inline in ConferenceService without a pre-existing reusable injection-prevention util in the codebase."
+  ],
+  "split_recommendation": null
+}
