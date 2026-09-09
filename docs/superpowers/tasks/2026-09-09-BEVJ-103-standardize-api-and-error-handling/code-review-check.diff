@@ -1,0 +1,190 @@
+diff --git a/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java b/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java
+index 5922afc..09b872e 100644
+--- a/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java
++++ b/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java
+@@ -4,13 +4,18 @@ import com.brownevents.app.exception.RegistrationMismatchException;
+ import com.brownevents.app.exception.ResourceNotFoundException;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
++import org.springframework.http.HttpHeaders;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
++import org.springframework.http.converter.HttpMessageNotReadableException;
+ import org.springframework.web.bind.annotation.ControllerAdvice;
+ import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.context.request.WebRequest;
++import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
++import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+ 
+ @ControllerAdvice
+-public class GlobalExceptionHandler {
++public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+ 
+     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+ 
+@@ -26,6 +31,22 @@ public class GlobalExceptionHandler {
+                 .body(new ErrorResponse(400, "Bad Request", ex.getMessage()));
+     }
+ 
++    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
++    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
++        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
++                .body(new ErrorResponse(400, "Bad Request", "Invalid value for parameter: " + ex.getName()));
++    }
++
++    @Override
++    protected ResponseEntity<Object> handleHttpMessageNotReadable(
++            HttpMessageNotReadableException ex,
++            HttpHeaders headers,
++            HttpStatus status,
++            WebRequest request) {
++        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
++                .body(new ErrorResponse(400, "Bad Request", "Malformed JSON request"));
++    }
++
+     @ExceptionHandler(Exception.class)
+     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
+         log.error("Unexpected error: {}", ex.getMessage(), ex);
+diff --git a/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java b/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
+index a77a48d..15a3055 100644
+--- a/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
++++ b/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
+@@ -67,7 +67,11 @@ public class ConferenceController {
+             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+             @RequestParam(required = false) String status) {
+         if (from != null && to != null && from.isAfter(to)) {
+-            return ResponseEntity.badRequest().<Map<String, Object>>build();
++            Map<String, Object> errorBody = new HashMap<>();
++            errorBody.put("status", 400);
++            errorBody.put("error", "Bad Request");
++            errorBody.put("message", "\"from\" must not be after \"to\"");
++            return ResponseEntity.badRequest().body(errorBody);
+         }
+         Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size), search, from, to, status);
+         Map<String, Object> response = new HashMap<>();
+diff --git a/backend/src/main/java/com/brownevents/app/service/ConferenceService.java b/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
+index c447699..9f3a4e4 100644
+--- a/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
++++ b/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
+@@ -46,11 +46,14 @@ public class ConferenceService {
+         existing.setLocation(conf.getLocation());
+         existing.setStartDate(conf.getStartDate());
+         existing.setEndDate(conf.getEndDate());
+-        existing.setStatus(conf.getStatus().toUpperCase());
++        if (conf.getStatus() != null) {
++            existing.setStatus(conf.getStatus().toUpperCase());
++        }
+         return conferenceRepository.save(existing);
+     }
+ 
+     public Page<Session> getConferenceSessions(Long id, Pageable pageable) {
++        conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+         return sessionRepository.findPageByConferenceId(id, pageable);
+     }
+ 
+diff --git a/backend/src/main/java/com/brownevents/app/service/RegistrationService.java b/backend/src/main/java/com/brownevents/app/service/RegistrationService.java
+index 18b7c64..dd48348 100644
+--- a/backend/src/main/java/com/brownevents/app/service/RegistrationService.java
++++ b/backend/src/main/java/com/brownevents/app/service/RegistrationService.java
+@@ -41,10 +41,14 @@ public class RegistrationService {
+     }
+ 
+     public List<Registration> getRegistrations(Long conferenceId) {
++        conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+         return registrationRepository.findByConferenceId(conferenceId);
+     }
+ 
+     public void deleteRegistration(Long conferenceId, Long registrationId) {
++        if (!registrationRepository.existsById(registrationId)) {
++            throw new ResourceNotFoundException("Registration not found");
++        }
+         if (!registrationRepository.existsByIdAndConferenceId(registrationId, conferenceId)) {
+             throw new RegistrationMismatchException("Registration does not belong to this conference");
+         }
+diff --git a/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java b/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java
+index 159ff92..1e770cb 100644
+--- a/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java
++++ b/backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java
+@@ -13,12 +13,17 @@ import org.springframework.data.domain.PageImpl;
+ import org.springframework.data.domain.PageRequest;
+ import org.springframework.data.domain.Pageable;
+ 
++import com.brownevents.app.entity.Session;
++import com.brownevents.app.exception.ResourceNotFoundException;
++
+ import java.time.LocalDate;
+ import java.util.Arrays;
+ import java.util.List;
++import java.util.Optional;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertNotNull;
++import static org.junit.jupiter.api.Assertions.assertThrows;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.ArgumentMatchers.isNull;
+@@ -150,4 +155,30 @@ public class ConferenceServiceTest {
+         assertEquals("New Conference", result.getTitle());
+         verify(conferenceRepository, times(1)).save(input);
+     }
++
++    @Test
++    public void getConference_notFound_shouldThrowResourceNotFoundException() {
++        when(conferenceRepository.findById(99L)).thenReturn(Optional.empty());
++
++        assertThrows(ResourceNotFoundException.class, () -> conferenceService.getConference(99L));
++        verify(conferenceRepository, times(1)).findById(99L);
++    }
++
++    @Test
++    public void updateConference_notFound_shouldThrowResourceNotFoundException() {
++        when(conferenceRepository.findById(99L)).thenReturn(Optional.empty());
++
++        assertThrows(ResourceNotFoundException.class,
++                () -> conferenceService.updateConference(99L, new Conference()));
++        verify(conferenceRepository, times(1)).findById(99L);
++    }
++
++    @Test
++    public void createSession_conferenceNotFound_shouldThrowResourceNotFoundException() {
++        when(conferenceRepository.findById(99L)).thenReturn(Optional.empty());
++
++        assertThrows(ResourceNotFoundException.class,
++                () -> conferenceService.createSession(99L, new Session()));
++        verify(conferenceRepository, times(1)).findById(99L);
++    }
+ }
+diff --git a/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java b/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java
+index 67b1c1b..a3753a4 100644
+--- a/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java
++++ b/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java
+@@ -85,4 +85,15 @@ public class SessionServiceTest {
+         verify(conferenceRepository, times(1)).findById(conferenceId);
+         verify(sessionRepository, times(1)).save(inputSession);
+     }
++
++    @Test
++    public void updateSession_notFound_shouldThrowResourceNotFoundException() {
++        when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
++
++        org.junit.jupiter.api.Assertions.assertThrows(
++                com.brownevents.app.exception.ResourceNotFoundException.class,
++                () -> sessionService.updateSession(99L, new Session())
++        );
++        verify(sessionRepository, times(1)).findById(99L);
++    }
+ }
+diff --git a/frontend/src/api.js b/frontend/src/api.js
+index 580a429..76499f2 100644
+--- a/frontend/src/api.js
++++ b/frontend/src/api.js
+@@ -47,7 +47,8 @@ export async function createConference(data) {
+ 
+ export async function getConferenceRegistrations(id) {
+   const response = await fetch(`${BASE_URL}/api/conferences/${id}/registrations`);
+-  return response.json();
++  const res = await response.json();
++  return res.data ?? res;
+ }
+ 
+ export async function deleteRegistration(conferenceId, registrationId) {

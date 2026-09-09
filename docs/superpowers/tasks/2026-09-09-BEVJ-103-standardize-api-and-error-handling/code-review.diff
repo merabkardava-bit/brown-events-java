@@ -1,0 +1,615 @@
+diff --git a/backend/src/main/java/com/brownevents/app/ApiResponse.java b/backend/src/main/java/com/brownevents/app/ApiResponse.java
+new file mode 100644
+index 0000000..1b1ab42
+--- /dev/null
++++ b/backend/src/main/java/com/brownevents/app/ApiResponse.java
+@@ -0,0 +1,13 @@
++package com.brownevents.app;
++
++public class ApiResponse<T> {
++    private final T data;
++
++    public ApiResponse(T data) {
++        this.data = data;
++    }
++
++    public T getData() {
++        return data;
++    }
++}
+diff --git a/backend/src/main/java/com/brownevents/app/ErrorResponse.java b/backend/src/main/java/com/brownevents/app/ErrorResponse.java
+new file mode 100644
+index 0000000..dfb35c7
+--- /dev/null
++++ b/backend/src/main/java/com/brownevents/app/ErrorResponse.java
+@@ -0,0 +1,17 @@
++package com.brownevents.app;
++
++public class ErrorResponse {
++    private final int status;
++    private final String error;
++    private final String message;
++
++    public ErrorResponse(int status, String error, String message) {
++        this.status = status;
++        this.error = error;
++        this.message = message;
++    }
++
++    public int getStatus()    { return status; }
++    public String getError()   { return error; }
++    public String getMessage() { return message; }
++}
+diff --git a/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java b/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java
+new file mode 100644
+index 0000000..5922afc
+--- /dev/null
++++ b/backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java
+@@ -0,0 +1,35 @@
++package com.brownevents.app;
++
++import com.brownevents.app.exception.RegistrationMismatchException;
++import com.brownevents.app.exception.ResourceNotFoundException;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.ControllerAdvice;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++
++@ControllerAdvice
++public class GlobalExceptionHandler {
++
++    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
++
++    @ExceptionHandler(ResourceNotFoundException.class)
++    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
++        return ResponseEntity.status(HttpStatus.NOT_FOUND)
++                .body(new ErrorResponse(404, "Not Found", ex.getMessage()));
++    }
++
++    @ExceptionHandler(RegistrationMismatchException.class)
++    public ResponseEntity<ErrorResponse> handleMismatch(RegistrationMismatchException ex) {
++        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
++                .body(new ErrorResponse(400, "Bad Request", ex.getMessage()));
++    }
++
++    @ExceptionHandler(Exception.class)
++    public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
++        log.error("Unexpected error: {}", ex.getMessage(), ex);
++        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
++                .body(new ErrorResponse(500, "Internal Server Error", "An unexpected error occurred"));
++    }
++}
+diff --git a/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java b/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
+index 9b45bf6..a77a48d 100644
+--- a/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
++++ b/backend/src/main/java/com/brownevents/app/controller/ConferenceController.java
+@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
+ import io.swagger.v3.oas.annotations.tags.Tag;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.PageRequest;
++import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+ 
+@@ -96,10 +97,10 @@ public class ConferenceController {
+             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+     })
+     @GetMapping("/{id}")
+-    public ResponseEntity<Conference> getConference(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> getConference(
+             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
+             @PathVariable Long id) {
+-        return ResponseEntity.ok(conferenceService.getConference(id));
++        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(conferenceService.getConference(id)));
+     }
+ 
+     // ── POST /api/conferences ─────────────────────────────────────────────────
+@@ -110,7 +111,7 @@ public class ConferenceController {
+     )
+     @ApiResponses({
+             @ApiResponse(
+-                    responseCode = "200",
++                    responseCode = "201",
+                     description = "Conference created successfully.",
+                     content = @Content(
+                             mediaType = "application/json",
+@@ -119,7 +120,7 @@ public class ConferenceController {
+             )
+     })
+     @PostMapping
+-    public ResponseEntity<Conference> createConference(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> createConference(
+             @RequestBody(
+                     description = "Conference details to create.",
+                     required = true,
+@@ -140,7 +141,7 @@ public class ConferenceController {
+                     )
+             )
+             @org.springframework.web.bind.annotation.RequestBody Conference conference) {
+-        return ResponseEntity.ok(conferenceService.createConference(conference));
++        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(conferenceService.createConference(conference)));
+     }
+ 
+     // ── PUT /api/conferences/{id} ─────────────────────────────────────────────
+@@ -161,7 +162,7 @@ public class ConferenceController {
+             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+     })
+     @PutMapping("/{id}")
+-    public ResponseEntity<Conference> updateConference(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> updateConference(
+             @Parameter(description = "Numeric ID of the conference to update.", example = "1", required = true)
+             @PathVariable Long id,
+             @RequestBody(
+@@ -184,7 +185,7 @@ public class ConferenceController {
+                     )
+             )
+             @org.springframework.web.bind.annotation.RequestBody Conference conference) {
+-        return ResponseEntity.ok(conferenceService.updateConference(id, conference));
++        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(conferenceService.updateConference(id, conference)));
+     }
+ 
+     // ── GET /api/conferences/{id}/sessions ────────────────────────────────────
+@@ -236,7 +237,7 @@ public class ConferenceController {
+     )
+     @ApiResponses({
+             @ApiResponse(
+-                    responseCode = "200",
++                    responseCode = "201",
+                     description = "Session created successfully.",
+                     content = @Content(
+                             mediaType = "application/json",
+@@ -253,7 +254,7 @@ public class ConferenceController {
+             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+     })
+     @PostMapping("/{id}/sessions")
+-    public ResponseEntity<Map<String, Object>> createSession(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> createSession(
+             @Parameter(description = "Numeric ID of the conference that will own this session.", example = "1", required = true)
+             @PathVariable Long id,
+             @RequestBody(
+@@ -277,9 +278,6 @@ public class ConferenceController {
+                     )
+             )
+             @org.springframework.web.bind.annotation.RequestBody Session session) {
+-        Session created = conferenceService.createSession(id, session);
+-        Map<String, Object> response = new HashMap<>();
+-        response.put("data", created);
+-        return ResponseEntity.ok(response);
++        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(conferenceService.createSession(id, session)));
+     }
+ }
+diff --git a/backend/src/main/java/com/brownevents/app/controller/RegistrationController.java b/backend/src/main/java/com/brownevents/app/controller/RegistrationController.java
+index 41fe942..82a1394 100644
+--- a/backend/src/main/java/com/brownevents/app/controller/RegistrationController.java
++++ b/backend/src/main/java/com/brownevents/app/controller/RegistrationController.java
+@@ -13,12 +13,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
+ import io.swagger.v3.oas.annotations.responses.ApiResponse;
+ import io.swagger.v3.oas.annotations.responses.ApiResponses;
+ import io.swagger.v3.oas.annotations.tags.Tag;
++import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+ 
+-import java.util.HashMap;
+ import java.util.List;
+-import java.util.Map;
+ 
+ @Tag(name = "Registrations", description = "Register attendees for conferences and manage existing registrations.")
+ @RestController
+@@ -42,7 +41,7 @@ public class RegistrationController {
+     )
+     @ApiResponses({
+             @ApiResponse(
+-                    responseCode = "200",
++                    responseCode = "201",
+                     description = "Attendee registered successfully.",
+                     content = @Content(
+                             mediaType = "application/json",
+@@ -56,7 +55,7 @@ public class RegistrationController {
+             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+     })
+     @PostMapping("/{id}/register")
+-    public ResponseEntity<Map<String, Object>> registerAttendee(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Registration>> registerAttendee(
+             @Parameter(description = "Numeric ID of the conference to register for.", example = "1", required = true)
+             @PathVariable Long id,
+             @RequestBody(
+@@ -76,10 +75,7 @@ public class RegistrationController {
+                     )
+             )
+             @org.springframework.web.bind.annotation.RequestBody Attendee attendee) {
+-        Registration registration = registrationService.registerAttendee(id, attendee);
+-        Map<String, Object> response = new HashMap<>();
+-        response.put("data", registration);
+-        return ResponseEntity.ok(response);
++        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(registrationService.registerAttendee(id, attendee)));
+     }
+ 
+     // ── GET /api/conferences/{id}/registrations ───────────────────────────────
+@@ -100,10 +96,10 @@ public class RegistrationController {
+             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+     })
+     @GetMapping("/{id}/registrations")
+-    public ResponseEntity<List<Registration>> getRegistrations(
++    public ResponseEntity<com.brownevents.app.ApiResponse<List<Registration>>> getRegistrations(
+             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
+             @PathVariable Long id) {
+-        return ResponseEntity.ok(registrationService.getRegistrations(id));
++        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(registrationService.getRegistrations(id)));
+     }
+ 
+     // ── DELETE /api/conferences/{id}/registrations/{registrationId} ───────────
+diff --git a/backend/src/main/java/com/brownevents/app/controller/SessionController.java b/backend/src/main/java/com/brownevents/app/controller/SessionController.java
+index 1b29ae6..7d2f2ab 100644
+--- a/backend/src/main/java/com/brownevents/app/controller/SessionController.java
++++ b/backend/src/main/java/com/brownevents/app/controller/SessionController.java
+@@ -44,10 +44,10 @@ public class SessionController {
+             @ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
+     })
+     @GetMapping("/{id}")
+-    public ResponseEntity<Session> getSession(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> getSession(
+             @Parameter(description = "Numeric ID of the session.", example = "10", required = true)
+             @PathVariable Long id) {
+-        return ResponseEntity.ok(sessionService.getSession(id));
++        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(sessionService.getSession(id)));
+     }
+ 
+     // ── PUT /api/sessions/{id} ────────────────────────────────────────────────
+@@ -70,7 +70,7 @@ public class SessionController {
+             @ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
+     })
+     @PutMapping("/{id}")
+-    public ResponseEntity<Session> updateSession(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> updateSession(
+             @Parameter(description = "Numeric ID of the session to update.", example = "10", required = true)
+             @PathVariable Long id,
+             @RequestBody(
+@@ -94,6 +94,6 @@ public class SessionController {
+                     )
+             )
+             @org.springframework.web.bind.annotation.RequestBody Session session) {
+-        return ResponseEntity.ok(sessionService.updateSession(id, session));
++        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(sessionService.updateSession(id, session)));
+     }
+ }
+diff --git a/backend/src/main/java/com/brownevents/app/controller/SpeakerController.java b/backend/src/main/java/com/brownevents/app/controller/SpeakerController.java
+index c738c6e..1470a8d 100644
+--- a/backend/src/main/java/com/brownevents/app/controller/SpeakerController.java
++++ b/backend/src/main/java/com/brownevents/app/controller/SpeakerController.java
+@@ -11,12 +11,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
+ import io.swagger.v3.oas.annotations.responses.ApiResponse;
+ import io.swagger.v3.oas.annotations.responses.ApiResponses;
+ import io.swagger.v3.oas.annotations.tags.Tag;
++import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+ 
+-import java.util.HashMap;
+ import java.util.List;
+-import java.util.Map;
+ 
+ @Tag(name = "Speakers", description = "Create and list speakers who can be assigned to conference sessions.")
+ @RestController
+@@ -47,8 +46,8 @@ public class SpeakerController {
+             )
+     })
+     @GetMapping
+-    public ResponseEntity<List<Speaker>> getAllSpeakers() {
+-        return ResponseEntity.ok(speakerService.getAllSpeakers());
++    public ResponseEntity<com.brownevents.app.ApiResponse<List<Speaker>>> getAllSpeakers() {
++        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(speakerService.getAllSpeakers()));
+     }
+ 
+     // ── POST /api/speakers ────────────────────────────────────────────────────
+@@ -60,7 +59,7 @@ public class SpeakerController {
+     )
+     @ApiResponses({
+             @ApiResponse(
+-                    responseCode = "200",
++                    responseCode = "201",
+                     description = "Speaker created successfully.",
+                     content = @Content(
+                             mediaType = "application/json",
+@@ -73,7 +72,7 @@ public class SpeakerController {
+             )
+     })
+     @PostMapping
+-    public ResponseEntity<Map<String, Object>> createSpeaker(
++    public ResponseEntity<com.brownevents.app.ApiResponse<Speaker>> createSpeaker(
+             @RequestBody(
+                     description = "Speaker details to register.",
+                     required = true,
+@@ -92,9 +91,6 @@ public class SpeakerController {
+                     )
+             )
+             @org.springframework.web.bind.annotation.RequestBody Speaker speaker) {
+-        Speaker created = speakerService.createSpeaker(speaker);
+-        Map<String, Object> response = new HashMap<>();
+-        response.put("data", created);
+-        return ResponseEntity.ok(response);
++        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(speakerService.createSpeaker(speaker)));
+     }
+ }
+diff --git a/backend/src/main/java/com/brownevents/app/exception/RegistrationMismatchException.java b/backend/src/main/java/com/brownevents/app/exception/RegistrationMismatchException.java
+new file mode 100644
+index 0000000..03f56ea
+--- /dev/null
++++ b/backend/src/main/java/com/brownevents/app/exception/RegistrationMismatchException.java
+@@ -0,0 +1,7 @@
++package com.brownevents.app.exception;
++
++public class RegistrationMismatchException extends RuntimeException {
++    public RegistrationMismatchException(String message) {
++        super(message);
++    }
++}
+diff --git a/backend/src/main/java/com/brownevents/app/exception/ResourceNotFoundException.java b/backend/src/main/java/com/brownevents/app/exception/ResourceNotFoundException.java
+new file mode 100644
+index 0000000..41c3f76
+--- /dev/null
++++ b/backend/src/main/java/com/brownevents/app/exception/ResourceNotFoundException.java
+@@ -0,0 +1,7 @@
++package com.brownevents.app.exception;
++
++public class ResourceNotFoundException extends RuntimeException {
++    public ResourceNotFoundException(String message) {
++        super(message);
++    }
++}
+diff --git a/backend/src/main/java/com/brownevents/app/service/ConferenceService.java b/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
+index 0739c11..c447699 100644
+--- a/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
++++ b/backend/src/main/java/com/brownevents/app/service/ConferenceService.java
+@@ -2,6 +2,7 @@ package com.brownevents.app.service;
+ 
+ import com.brownevents.app.entity.Conference;
+ import com.brownevents.app.entity.Session;
++import com.brownevents.app.exception.ResourceNotFoundException;
+ import com.brownevents.app.repository.ConferenceRepository;
+ import com.brownevents.app.repository.SessionRepository;
+ import org.springframework.data.domain.Page;
+@@ -31,7 +32,7 @@ public class ConferenceService {
+     }
+ 
+     public Conference getConference(Long id) {
+-        return conferenceRepository.findById(id).get();
++        return conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+     }
+ 
+     public Conference createConference(Conference conf) {
+@@ -39,7 +40,7 @@ public class ConferenceService {
+     }
+ 
+     public Conference updateConference(Long id, Conference conf) {
+-        Conference existing = conferenceRepository.findById(id).get();
++        Conference existing = conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+         existing.setTitle(conf.getTitle());
+         existing.setDescription(conf.getDescription());
+         existing.setLocation(conf.getLocation());
+@@ -54,7 +55,7 @@ public class ConferenceService {
+     }
+ 
+     public Session createSession(Long conferenceId, Session session) {
+-        Conference conference = conferenceRepository.findById(conferenceId).get();
++        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+         session.setConference(conference);
+         return sessionRepository.save(session);
+     }
+diff --git a/backend/src/main/java/com/brownevents/app/service/RegistrationService.java b/backend/src/main/java/com/brownevents/app/service/RegistrationService.java
+index 4115dae..18b7c64 100644
+--- a/backend/src/main/java/com/brownevents/app/service/RegistrationService.java
++++ b/backend/src/main/java/com/brownevents/app/service/RegistrationService.java
+@@ -3,6 +3,8 @@ package com.brownevents.app.service;
+ import com.brownevents.app.entity.Attendee;
+ import com.brownevents.app.entity.Conference;
+ import com.brownevents.app.entity.Registration;
++import com.brownevents.app.exception.RegistrationMismatchException;
++import com.brownevents.app.exception.ResourceNotFoundException;
+ import com.brownevents.app.repository.AttendeeRepository;
+ import com.brownevents.app.repository.ConferenceRepository;
+ import com.brownevents.app.repository.RegistrationRepository;
+@@ -29,7 +31,7 @@ public class RegistrationService {
+     public Registration registerAttendee(Long conferenceId, Attendee attendee) {
+         Attendee savedAttendee = attendeeRepository.findByEmail(attendee.getEmail())
+                 .orElseGet(() -> attendeeRepository.save(attendee));
+-        Conference conference = conferenceRepository.findById(conferenceId).get();
++        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+         Registration registration = new Registration();
+         registration.setAttendee(savedAttendee);
+         registration.setConference(conference);
+@@ -44,7 +46,7 @@ public class RegistrationService {
+ 
+     public void deleteRegistration(Long conferenceId, Long registrationId) {
+         if (!registrationRepository.existsByIdAndConferenceId(registrationId, conferenceId)) {
+-            throw new IllegalArgumentException("Registration not found for this conference");
++            throw new RegistrationMismatchException("Registration does not belong to this conference");
+         }
+         registrationRepository.deleteById(registrationId);
+     }
+diff --git a/backend/src/main/java/com/brownevents/app/service/SessionService.java b/backend/src/main/java/com/brownevents/app/service/SessionService.java
+index 5e69a99..96f4b0e 100644
+--- a/backend/src/main/java/com/brownevents/app/service/SessionService.java
++++ b/backend/src/main/java/com/brownevents/app/service/SessionService.java
+@@ -2,6 +2,7 @@ package com.brownevents.app.service;
+ 
+ import com.brownevents.app.entity.Conference;
+ import com.brownevents.app.entity.Session;
++import com.brownevents.app.exception.ResourceNotFoundException;
+ import com.brownevents.app.repository.ConferenceRepository;
+ import com.brownevents.app.repository.SessionRepository;
+ import org.springframework.stereotype.Service;
+@@ -18,17 +19,17 @@ public class SessionService {
+     }
+ 
+     public Session createSession(Long conferenceId, Session session) {
+-        Conference conference = conferenceRepository.findById(conferenceId).get();
++        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+         session.setConference(conference);
+         return sessionRepository.save(session);
+     }
+ 
+     public Session getSession(Long id) {
+-        return sessionRepository.findById(id).get();
++        return sessionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+     }
+ 
+     public Session updateSession(Long id, Session session) {
+-        Session existing = sessionRepository.findById(id).get();
++        Session existing = sessionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+         existing.setTitle(session.getTitle());
+         existing.setDescription(session.getDescription());
+         existing.setStartTime(session.getStartTime());
+diff --git a/backend/src/test/java/com/brownevents/app/GlobalExceptionHandlerTest.java b/backend/src/test/java/com/brownevents/app/GlobalExceptionHandlerTest.java
+new file mode 100644
+index 0000000..5eb8cdb
+--- /dev/null
++++ b/backend/src/test/java/com/brownevents/app/GlobalExceptionHandlerTest.java
+@@ -0,0 +1,73 @@
++package com.brownevents.app;
++
++import com.brownevents.app.exception.RegistrationMismatchException;
++import com.brownevents.app.exception.ResourceNotFoundException;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@WebMvcTest(controllers = GlobalExceptionHandlerTest.TestController.class)
++@Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
++public class GlobalExceptionHandlerTest {
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @RestController
++    static class TestController {
++        @GetMapping("/test/not-found")
++        public void throwNotFound() {
++            throw new ResourceNotFoundException("Conference not found");
++        }
++        @GetMapping("/test/mismatch")
++        public void throwMismatch() {
++            throw new RegistrationMismatchException("Registration does not belong to this conference");
++        }
++        @GetMapping("/test/unexpected")
++        public void throwUnexpected() {
++            throw new RuntimeException("secret internal details");
++        }
++    }
++
++    @Test
++    public void notFound_shouldReturn404WithErrorShape() throws Exception {
++        mockMvc.perform(get("/test/not-found"))
++                .andExpect(status().isNotFound())
++                .andExpect(jsonPath("$.status").value(404))
++                .andExpect(jsonPath("$.error").value("Not Found"))
++                .andExpect(jsonPath("$.message").value("Conference not found"));
++    }
++
++    @Test
++    public void mismatch_shouldReturn400WithErrorShape() throws Exception {
++        mockMvc.perform(get("/test/mismatch"))
++                .andExpect(status().isBadRequest())
++                .andExpect(jsonPath("$.status").value(400))
++                .andExpect(jsonPath("$.error").value("Bad Request"))
++                .andExpect(jsonPath("$.message").value("Registration does not belong to this conference"));
++    }
++
++    @Test
++    public void unexpectedException_shouldReturn500WithSafeMessage() throws Exception {
++        mockMvc.perform(get("/test/unexpected"))
++                .andExpect(status().isInternalServerError())
++                .andExpect(jsonPath("$.status").value(500))
++                .andExpect(jsonPath("$.error").value("Internal Server Error"))
++                .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
++    }
++
++    @Test
++    public void unexpectedException_shouldNotExposeInternalMessage() throws Exception {
++        // "secret internal details" must not appear anywhere in the response
++        mockMvc.perform(get("/test/unexpected"))
++                .andExpect(content().string(org.hamcrest.Matchers.not(
++                        org.hamcrest.Matchers.containsString("secret internal details"))));
++    }
++}
+diff --git a/backend/src/test/java/com/brownevents/app/controller/ConferenceControllerTest.java b/backend/src/test/java/com/brownevents/app/controller/ConferenceControllerTest.java
+index 5de8a65..327f6c1 100644
+--- a/backend/src/test/java/com/brownevents/app/controller/ConferenceControllerTest.java
++++ b/backend/src/test/java/com/brownevents/app/controller/ConferenceControllerTest.java
+@@ -1,5 +1,6 @@
+ package com.brownevents.app.controller;
+ 
++import com.brownevents.app.entity.Conference;
+ import com.brownevents.app.service.ConferenceService;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
+@@ -7,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+ import org.springframework.boot.test.mock.mockito.MockBean;
+ import org.springframework.data.domain.PageImpl;
+ import org.springframework.data.domain.Pageable;
++import org.springframework.http.MediaType;
+ import org.springframework.test.web.servlet.MockMvc;
+ 
+ import java.time.LocalDate;
+@@ -15,6 +17,8 @@ import java.util.Collections;
+ import static org.mockito.ArgumentMatchers.*;
+ import static org.mockito.Mockito.when;
+ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+ 
+ @WebMvcTest(ConferenceController.class)
+@@ -26,6 +30,21 @@ public class ConferenceControllerTest {
+     @MockBean
+     private ConferenceService conferenceService;
+ 
++    @Test
++    public void createConference_shouldReturn201WithDataEnvelope() throws Exception {
++        Conference created = new Conference();
++        created.setId(1L);
++        created.setTitle("Brown Tech Summit 2025");
++
++        when(conferenceService.createConference(any(Conference.class))).thenReturn(created);
++
++        mockMvc.perform(post("/api/conferences")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content("{\"title\":\"Brown Tech Summit 2025\",\"status\":\"UPCOMING\"}"))
++                .andExpect(status().isCreated())
++                .andExpect(jsonPath("$.data.title").value("Brown Tech Summit 2025"));
++    }
++
+     @Test
+     public void getAllConferences_withIsoDateParams_shouldReturn200() throws Exception {
+         when(conferenceService.getAllConferences(
+diff --git a/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java b/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java
+index 82ad60e..67b1c1b 100644
+--- a/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java
++++ b/backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java
+@@ -44,6 +44,17 @@ public class SessionServiceTest {
+         verify(sessionRepository, times(1)).findById(1L);
+     }
+ 
++    @Test
++    public void getSession_notFound_shouldThrowResourceNotFoundException() {
++        when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
++
++        org.junit.jupiter.api.Assertions.assertThrows(
++                com.brownevents.app.exception.ResourceNotFoundException.class,
++                () -> sessionService.getSession(99L)
++        );
++        verify(sessionRepository, times(1)).findById(99L);
++    }
++
+     @Test
+     public void createSession_shouldSetConferenceAndSave() {
+         Long conferenceId = 5L;
