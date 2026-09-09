@@ -47,7 +47,8 @@ export async function createConference(data) {
 
 export async function getConferenceRegistrations(id) {
   const response = await fetch(`${BASE_URL}/api/conferences/${id}/registrations`);
-  return response.json();
+  const res = await response.json();
+  return res.data ?? res;
 }
 
 export async function deleteRegistration(conferenceId, registrationId) {

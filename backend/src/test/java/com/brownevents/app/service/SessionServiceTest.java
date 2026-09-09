@@ -85,4 +85,15 @@ public class SessionServiceTest {
         verify(conferenceRepository, times(1)).findById(conferenceId);
         verify(sessionRepository, times(1)).save(inputSession);
     }
+
+    @Test
+    public void updateSession_notFound_shouldThrowResourceNotFoundException() {
+        when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.brownevents.app.exception.ResourceNotFoundException.class,
+                () -> sessionService.updateSession(99L, new Session())
+        );
+        verify(sessionRepository, times(1)).findById(99L);
+    }
 }

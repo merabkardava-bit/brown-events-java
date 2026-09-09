@@ -67,7 +67,11 @@ public class ConferenceController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String status) {
         if (from != null && to != null && from.isAfter(to)) {
-            return ResponseEntity.badRequest().<Map<String, Object>>build();
+            Map<String, Object> errorBody = new HashMap<>();
+            errorBody.put("status", 400);
+            errorBody.put("error", "Bad Request");
+            errorBody.put("message", "\"from\" must not be after \"to\"");
+            return ResponseEntity.badRequest().body(errorBody);
         }
         Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size), search, from, to, status);
         Map<String, Object> response = new HashMap<>();

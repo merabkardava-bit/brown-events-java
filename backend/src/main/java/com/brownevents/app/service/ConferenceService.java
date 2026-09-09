@@ -46,11 +46,14 @@ public class ConferenceService {
         existing.setLocation(conf.getLocation());
         existing.setStartDate(conf.getStartDate());
         existing.setEndDate(conf.getEndDate());
-        existing.setStatus(conf.getStatus().toUpperCase());
+        if (conf.getStatus() != null) {
+            existing.setStatus(conf.getStatus().toUpperCase());
+        }
         return conferenceRepository.save(existing);
     }
 
     public Page<Session> getConferenceSessions(Long id, Pageable pageable) {
+        conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         return sessionRepository.findPageByConferenceId(id, pageable);
     }
 

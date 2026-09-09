@@ -41,10 +41,14 @@ public class RegistrationService {
     }
 
     public List<Registration> getRegistrations(Long conferenceId) {
+        conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         return registrationRepository.findByConferenceId(conferenceId);
     }
 
     public void deleteRegistration(Long conferenceId, Long registrationId) {
+        if (!registrationRepository.existsById(registrationId)) {
+            throw new ResourceNotFoundException("Registration not found");
+        }
         if (!registrationRepository.existsByIdAndConferenceId(registrationId, conferenceId)) {
             throw new RegistrationMismatchException("Registration does not belong to this conference");
         }
