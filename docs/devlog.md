@@ -59,3 +59,22 @@ for the `COUNT(*)` Spring Data needs), updated `ConferenceService` to accept `Pa
 `{ data, page, size, totalElements, totalPages }` envelope, and updated the frontend to track page
 state and render Prev/Next controls. The test for `getAllConferences` was also updated to match the
 new pageable signature.
+
+## 2026-09-09
+
+### BEVJ-201 — Conference search and filtering
+
+Added keyword search, date range, and status filtering to the conference list. Filters are applied
+server-side via a new `findAllFiltered` JPQL query wired through the service and controller. The
+filter bar UI was added to `ConferenceListPage`.
+
+Two bugs had to be fixed after the initial implementation, both caused by Claude omitting
+necessary Spring/PostgreSQL config:
+
+1. **Missing `@DateTimeFormat`** — Spring MVC couldn't parse the `yyyy-MM-dd` date string from
+   `<input type="date">` into `LocalDate`. Fixed with `@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)`
+   on the `from`/`to` request params.
+2. **PostgreSQL type inference** — after fix 1, Postgres threw `could not determine data type of
+   parameter $4` because `:from IS NULL` in JPQL gives it no type hint. Fixed by changing to
+   `cast(:from as date) IS NULL`. The `@WebMvcTest` added for bug 1 couldn't catch this because
+   it mocks the service and never hits the database.
