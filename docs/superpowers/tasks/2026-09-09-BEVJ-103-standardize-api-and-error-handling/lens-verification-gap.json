@@ -1,0 +1,29 @@
+[
+  {
+    "location": "RegistrationController.getRegistrations now returns ResponseEntity<ApiResponse<List<Registration>>> instead of ResponseEntity<List<Registration>> — backend/src/main/java/com/brownevents/app/controller/RegistrationController.java:99",
+    "trigger_condition": "Response shape changed from a bare JSON array [...] to { \"data\": [...] }; the only consumer checks Array.isArray(data), which is always false for the new object shape, silently collapsing the list to []",
+    "guard_snippet": "mockMvc.perform(get(\"/api/conferences/1/registrations\")).andExpect(jsonPath(\"$.data\").isArray()) — absent from ConferenceControllerTest; no RegistrationControllerTest exists; frontend has no tests",
+    "potential_consequence": "ConferenceDetailPage always renders \"No registrations yet\" after this change because setRegistrations(Array.isArray(data) ? data : []) evaluates the fallback branch for every response; no test fails — the frontend has no test suite and ConferenceControllerTest covers only createConference and getAllConferences",
+    "gap_shape": "regression-gap",
+    "consumer": "ConferenceDetailPage.jsx:66 — setRegistrations(Array.isArray(data) ? data : [])",
+    "evidence": "ConferenceControllerTest.java (lines 33-58) contains two tests: createConference_shouldReturn201WithDataEnvelope and getAllConferences_withIsoDateParams_shouldReturn200 — neither touches the registrations endpoint; file glob of backend/src/test confirms no RegistrationControllerTest exists; CLAUDE.md states the frontend has no tests"
+  },
+  {
+    "location": "RegistrationService.deleteRegistration changed to throw RegistrationMismatchException instead of IllegalArgumentException — backend/src/main/java/com/brownevents/app/service/RegistrationService.java:49",
+    "trigger_condition": "GlobalExceptionHandlerTest.mismatch_shouldReturn400WithErrorShape exercises the handler via a hardcoded stub controller that throws RegistrationMismatchException directly; it does not invoke RegistrationService at all, so a revert of the service exception type would not be caught",
+    "guard_snippet": "assertThrows(RegistrationMismatchException.class, () -> registrationService.deleteRegistration(conferenceId, nonMatchingRegistrationId)) in a RegistrationServiceTest — absent; no RegistrationServiceTest file exists",
+    "potential_consequence": "If deleteRegistration reverted to throwing IllegalArgumentException, the generic Exception handler returns 500 instead of 400 for registration-mismatch errors; GlobalExceptionHandlerTest still passes because its stub bypasses RegistrationService entirely",
+    "gap_shape": "regression-gap",
+    "consumer": "DELETE /api/conferences/{conferenceId}/registrations/{registrationId} — RegistrationController backed by RegistrationService.deleteRegistration at backend/src/main/java/com/brownevents/app/service/RegistrationService.java:47",
+    "evidence": "GlobalExceptionHandlerTest (lines 518-524) uses TestController.throwMismatch() which directly throws RegistrationMismatchException without calling RegistrationService; file glob of backend/src/test confirms only ConferenceServiceTest, SessionServiceTest, GlobalExceptionHandlerTest, and ConferenceControllerTest exist — no RegistrationServiceTest"
+  },
+  {
+    "location": "SessionService.updateSession changed to throw ResourceNotFoundException on missing session — backend/src/main/java/com/brownevents/app/service/SessionService.java (updateSession, orElseThrow hunk)",
+    "trigger_condition": "The PR adds getSession_notFound_shouldThrowResourceNotFoundException covering the getSession orElseThrow path, establishing the rule; the identical orElseThrow change on the sibling updateSession path has no corresponding test",
+    "guard_snippet": "assertThrows(ResourceNotFoundException.class, () -> sessionService.updateSession(99L, new Session())) in SessionServiceTest — absent from the updated SessionServiceTest",
+    "potential_consequence": "If updateSession reverted to .get(), a missing session would throw NoSuchElementException (caught by the generic handler → 500) instead of ResourceNotFoundException (→ 404); SessionServiceTest.getSession_notFound_shouldThrowResourceNotFoundException would still pass because it only exercises getSession",
+    "gap_shape": "missing-adoption-gap",
+    "consumer": "PUT /api/sessions/{id} — SessionController backed by SessionService.updateSession",
+    "evidence": "SessionServiceTest (diff lines 602-611) adds one test covering sessionService.getSession(99L) → ResourceNotFoundException; no test for sessionService.updateSession with a missing id was added or exists in the file; the getSession test is the supersession signal — same contract, same orElseThrow change, same class under test"
+  }
+]

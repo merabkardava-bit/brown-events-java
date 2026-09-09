@@ -1,0 +1,75 @@
+{
+  "findings": [
+    {
+      "id": "CR-001",
+      "outcome": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/controller/ConferenceController.java",
+      "line": 70,
+      "note": "Replaced .build() with .body(errorBody) where errorBody is a Map with status=400, error='Bad Request', message='\"from\" must not be after \"to\"'. Structured error body now matches the contract."
+    },
+    {
+      "id": "CR-002",
+      "outcome": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java",
+      "note": "GlobalExceptionHandler now extends ResponseEntityExceptionHandler. Added @ExceptionHandler(MethodArgumentTypeMismatchException.class) returning ErrorResponse(400). Overrode handleHttpMessageNotReadable to return ErrorResponse(400, 'Bad Request', 'Malformed JSON request') instead of Spring's default empty body."
+    },
+    {
+      "id": "CR-003",
+      "outcome": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 49,
+      "note": "Added null guard: if (conf.getStatus() != null) { existing.setStatus(conf.getStatus().toUpperCase()); }. A PUT body omitting status no longer causes NullPointerException."
+    },
+    {
+      "id": "CR-004",
+      "outcome": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 53,
+      "note": "Added conferenceRepository.findById(id).orElseThrow(ResourceNotFoundException) before the session query in getConferenceSessions. Missing conference now returns 404 instead of empty 200."
+    },
+    {
+      "id": "CR-005",
+      "outcome": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java",
+      "line": 43,
+      "note": "Added conferenceRepository.findById(conferenceId).orElseThrow(ResourceNotFoundException) at the start of getRegistrations. Missing conference now returns 404 instead of empty list with 200."
+    },
+    {
+      "id": "CR-006",
+      "outcome": "fixed",
+      "file": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java",
+      "line": 47,
+      "note": "Added registrationRepository.existsById(registrationId) check before the conference-membership check. An absent registration now throws ResourceNotFoundException (404) before the mismatch check runs."
+    },
+    {
+      "id": "CR-007",
+      "outcome": "fixed",
+      "file": "backend/src/test/java/com/brownevents/app/service/RegistrationServiceTest.java",
+      "note": "Created RegistrationServiceTest with three tests: deleteRegistration_registrationNotFound_shouldThrowResourceNotFoundException, deleteRegistration_registrationBelongsToDifferentConference_shouldThrowRegistrationMismatchException, getRegistrations_conferenceNotFound_shouldThrowResourceNotFoundException. All three pass."
+    },
+    {
+      "id": "CR-008",
+      "outcome": "no_change_needed",
+      "file": "backend/src/test/java/com/brownevents/app/GlobalExceptionHandlerTest.java",
+      "note": "Investigated: @WebMvcTest(controllers = TestController.class) configures a type-filter only; it does NOT register the bean independently. TestController is a static inner class of the test class and is not in any component-scan base package, so it is registered exactly once — via @Import. Removing it from @Import broke all four GlobalExceptionHandlerTest tests (all endpoints returned 404). The original setup causes no actual BeanDefinitionOverrideException in Spring Boot 2.7.14 and is preserved."
+    },
+    {
+      "id": "CR-009",
+      "outcome": "fixed",
+      "file": "backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java",
+      "note": "Added three ResourceNotFoundException tests: getConference_notFound_shouldThrowResourceNotFoundException, updateConference_notFound_shouldThrowResourceNotFoundException, createSession_conferenceNotFound_shouldThrowResourceNotFoundException. All pass."
+    },
+    {
+      "id": "CR-010",
+      "outcome": "fixed",
+      "file": "backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java",
+      "note": "Added updateSession_notFound_shouldThrowResourceNotFoundException mirroring the getSession_notFound pattern. Passes."
+    },
+    {
+      "id": "CR-011",
+      "outcome": "fixed",
+      "file": "frontend/src/api.js",
+      "note": "Updated getConferenceRegistrations to: const res = await response.json(); return res.data ?? res; This unwraps the {data:[...]} envelope before returning, so ConferenceDetailPage.jsx:66 receives the array directly and Array.isArray(data) is true. The existing setRegistrations(Array.isArray(data) ? data : []) line required no change."
+    }
+  ]
+}

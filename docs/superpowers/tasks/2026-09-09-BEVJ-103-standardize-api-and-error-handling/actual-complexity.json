@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "generated": "2026-09-09T00:00:00Z",
+  "dimensions": {
+    "component_scope":      { "score": 6, "label": "XXL" },
+    "requirements_clarity": { "score": 2, "label": "S" },
+    "technical_risk":       { "score": 2, "label": "S" },
+    "file_change_estimate": { "score": 6, "label": "XXL" },
+    "dependencies":         { "score": 1, "label": "XS" },
+    "affected_layers":      { "score": 4, "label": "L" }
+  },
+  "total": 21,
+  "size": "L",
+  "band_range": "21-26",
+  "files_changed": 18,
+  "routing": "brainstorming",
+  "key_reasoning": [
+    {
+      "dimension": "component_scope",
+      "reason": "4 controllers + 3 services + 5 new shared types (ApiResponse<T>, ErrorResponse, GlobalExceptionHandler, ResourceNotFoundException, RegistrationMismatchException) across backend and frontend subsystems. ApiResponse<T> changes the public REST contract consumed by the frontend; frontend/src/api.js updated in tandem — a cross-system contract boundary is crossed. Red flag applied: large-subsystem refactoring (all controllers and services standardized in one change) bumps XL to XXL."
+    },
+    {
+      "dimension": "file_change_estimate",
+      "reason": "18 files changed per diffstat. Actual-mode mapping: 16+ files = XXL. 7 new files (ApiResponse, ErrorResponse, GlobalExceptionHandler, RegistrationMismatchException, ResourceNotFoundException, GlobalExceptionHandlerTest, ConferenceControllerTest) and 11 modified files across 8 directories."
+    },
+    {
+      "dimension": "affected_layers",
+      "reason": "4 distinct layers touched: UI (frontend/src/api.js updated to consume {data:...} envelope and drop the data.data||data workaround), API (4 controllers wrapped with ApiResponse<T> and error responses delegated to GlobalExceptionHandler), Service (3 services updated to throw ResourceNotFoundException and RegistrationMismatchException instead of NoSuchElementException), Infrastructure/cross-cutting (GlobalExceptionHandler + ApiResponse + ErrorResponse + 2 exception types introduced as shared foundation). No persistence or external layers touched."
+    }
+  ],
+  "red_flags_applied": [
+    "Component Scope bumped from XL to XXL: large-subsystem refactoring — all 4 controllers and 3 services standardized in a single change; ApiResponse<T> establishes a new shared API contract crossing the backend/frontend boundary"
+  ],
+  "split_recommendation": null
+}
