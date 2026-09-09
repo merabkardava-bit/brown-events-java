@@ -13,12 +13,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Tag(name = "Registrations", description = "Register attendees for conferences and manage existing registrations.")
 @RestController
@@ -42,7 +41,7 @@ public class RegistrationController {
     )
     @ApiResponses({
             @ApiResponse(
-                    responseCode = "200",
+                    responseCode = "201",
                     description = "Attendee registered successfully.",
                     content = @Content(
                             mediaType = "application/json",
@@ -56,7 +55,7 @@ public class RegistrationController {
             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @PostMapping("/{id}/register")
-    public ResponseEntity<Map<String, Object>> registerAttendee(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Registration>> registerAttendee(
             @Parameter(description = "Numeric ID of the conference to register for.", example = "1", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -76,10 +75,7 @@ public class RegistrationController {
                     )
             )
             @org.springframework.web.bind.annotation.RequestBody Attendee attendee) {
-        Registration registration = registrationService.registerAttendee(id, attendee);
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", registration);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(registrationService.registerAttendee(id, attendee)));
     }
 
     // ── GET /api/conferences/{id}/registrations ───────────────────────────────
@@ -100,10 +96,10 @@ public class RegistrationController {
             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @GetMapping("/{id}/registrations")
-    public ResponseEntity<List<Registration>> getRegistrations(
+    public ResponseEntity<com.brownevents.app.ApiResponse<List<Registration>>> getRegistrations(
             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
             @PathVariable Long id) {
-        return ResponseEntity.ok(registrationService.getRegistrations(id));
+        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(registrationService.getRegistrations(id)));
     }
 
     // ── DELETE /api/conferences/{id}/registrations/{registrationId} ───────────

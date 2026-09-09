@@ -44,10 +44,10 @@ public class SessionController {
             @ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Session> getSession(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> getSession(
             @Parameter(description = "Numeric ID of the session.", example = "10", required = true)
             @PathVariable Long id) {
-        return ResponseEntity.ok(sessionService.getSession(id));
+        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(sessionService.getSession(id)));
     }
 
     // ── PUT /api/sessions/{id} ────────────────────────────────────────────────
@@ -70,7 +70,7 @@ public class SessionController {
             @ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Session> updateSession(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> updateSession(
             @Parameter(description = "Numeric ID of the session to update.", example = "10", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -94,6 +94,6 @@ public class SessionController {
                     )
             )
             @org.springframework.web.bind.annotation.RequestBody Session session) {
-        return ResponseEntity.ok(sessionService.updateSession(id, session));
+        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(sessionService.updateSession(id, session)));
     }
 }

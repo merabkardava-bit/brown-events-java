@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -96,10 +97,10 @@ public class ConferenceController {
             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Conference> getConference(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> getConference(
             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
             @PathVariable Long id) {
-        return ResponseEntity.ok(conferenceService.getConference(id));
+        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(conferenceService.getConference(id)));
     }
 
     // ── POST /api/conferences ─────────────────────────────────────────────────
@@ -110,7 +111,7 @@ public class ConferenceController {
     )
     @ApiResponses({
             @ApiResponse(
-                    responseCode = "200",
+                    responseCode = "201",
                     description = "Conference created successfully.",
                     content = @Content(
                             mediaType = "application/json",
@@ -119,7 +120,7 @@ public class ConferenceController {
             )
     })
     @PostMapping
-    public ResponseEntity<Conference> createConference(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> createConference(
             @RequestBody(
                     description = "Conference details to create.",
                     required = true,
@@ -140,7 +141,7 @@ public class ConferenceController {
                     )
             )
             @org.springframework.web.bind.annotation.RequestBody Conference conference) {
-        return ResponseEntity.ok(conferenceService.createConference(conference));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(conferenceService.createConference(conference)));
     }
 
     // ── PUT /api/conferences/{id} ─────────────────────────────────────────────
@@ -161,7 +162,7 @@ public class ConferenceController {
             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Conference> updateConference(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> updateConference(
             @Parameter(description = "Numeric ID of the conference to update.", example = "1", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -184,7 +185,7 @@ public class ConferenceController {
                     )
             )
             @org.springframework.web.bind.annotation.RequestBody Conference conference) {
-        return ResponseEntity.ok(conferenceService.updateConference(id, conference));
+        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(conferenceService.updateConference(id, conference)));
     }
 
     // ── GET /api/conferences/{id}/sessions ────────────────────────────────────
@@ -236,7 +237,7 @@ public class ConferenceController {
     )
     @ApiResponses({
             @ApiResponse(
-                    responseCode = "200",
+                    responseCode = "201",
                     description = "Session created successfully.",
                     content = @Content(
                             mediaType = "application/json",
@@ -253,7 +254,7 @@ public class ConferenceController {
             @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @PostMapping("/{id}/sessions")
-    public ResponseEntity<Map<String, Object>> createSession(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> createSession(
             @Parameter(description = "Numeric ID of the conference that will own this session.", example = "1", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -277,9 +278,6 @@ public class ConferenceController {
                     )
             )
             @org.springframework.web.bind.annotation.RequestBody Session session) {
-        Session created = conferenceService.createSession(id, session);
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", created);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(conferenceService.createSession(id, session)));
     }
 }
