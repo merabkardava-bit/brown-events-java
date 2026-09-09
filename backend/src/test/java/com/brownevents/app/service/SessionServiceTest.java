@@ -45,6 +45,17 @@ public class SessionServiceTest {
     }
 
     @Test
+    public void getSession_notFound_shouldThrowResourceNotFoundException() {
+        when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.brownevents.app.exception.ResourceNotFoundException.class,
+                () -> sessionService.getSession(99L)
+        );
+        verify(sessionRepository, times(1)).findById(99L);
+    }
+
+    @Test
     public void createSession_shouldSetConferenceAndSave() {
         Long conferenceId = 5L;
 

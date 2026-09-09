@@ -3,6 +3,8 @@ package com.brownevents.app.service;
 import com.brownevents.app.entity.Attendee;
 import com.brownevents.app.entity.Conference;
 import com.brownevents.app.entity.Registration;
+import com.brownevents.app.exception.RegistrationMismatchException;
+import com.brownevents.app.exception.ResourceNotFoundException;
 import com.brownevents.app.repository.AttendeeRepository;
 import com.brownevents.app.repository.ConferenceRepository;
 import com.brownevents.app.repository.RegistrationRepository;
@@ -29,7 +31,7 @@ public class RegistrationService {
     public Registration registerAttendee(Long conferenceId, Attendee attendee) {
         Attendee savedAttendee = attendeeRepository.findByEmail(attendee.getEmail())
                 .orElseGet(() -> attendeeRepository.save(attendee));
-        Conference conference = conferenceRepository.findById(conferenceId).get();
+        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         Registration registration = new Registration();
         registration.setAttendee(savedAttendee);
         registration.setConference(conference);
@@ -44,7 +46,7 @@ public class RegistrationService {
 
     public void deleteRegistration(Long conferenceId, Long registrationId) {
         if (!registrationRepository.existsByIdAndConferenceId(registrationId, conferenceId)) {
-            throw new IllegalArgumentException("Registration not found for this conference");
+            throw new RegistrationMismatchException("Registration does not belong to this conference");
         }
         registrationRepository.deleteById(registrationId);
     }
