@@ -1,0 +1,2 @@
+{"ts":"2026-09-09T01:15:53Z","gate_id":"plan.approved","mode":"hitl","verdict":{"decision":"approve","rationale":"User reviewed and approved the single-task plan.","follow_ups":[],"confidence":"high","source":"hitl"},"escalated":false}
+{"ts":"2026-09-09T01:44:24Z","gate_id":"code-review.final","mode":"hitl","verdict":{"decision":"approve","rationale":"User reviewed brief and approved — 5 findings noted, accepted for now.","follow_ups":[],"confidence":"high","source":"hitl"},"escalated":false}

@@ -1,0 +1,1 @@
+{"task_id":"task-1","status":"done","commit":"pending-user-commit","test_command":"cd backend && mvn test -Dtest=ConferenceControllerTest"}

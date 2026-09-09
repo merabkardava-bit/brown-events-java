@@ -1,0 +1,73 @@
+{
+  "decision": "request-changes",
+  "rationale": "5 patch defects in the BEVJ-201 date-filter fix: spanning-conference query gap (CR-001), empty-string status passthrough (CR-002), missing 400 regression test (CR-003), unguarded response.json() in api.js (CR-004), and stale UI state on invalid date range (CR-005). No deferred or dismissed findings. Confidence is low: no spec/story artifact existed so acceptance criteria could not be verified.",
+  "confidence": "low",
+  "risk_flags": [],
+  "business_review": [],
+  "standards_review": [
+    { "kind": "commit-format", "status": "na", "notes": "Standards audit not in scope for this profile." },
+    { "kind": "code-quality", "status": "na", "notes": "Standards audit not in scope for this profile." },
+    { "kind": "security", "status": "na", "notes": "Standards audit not in scope for this profile." }
+  ],
+  "findings": [
+    {
+      "id": "CR-001",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/repository/ConferenceRepository.java",
+      "line": 55,
+      "title": "Spanning conferences excluded from date-range results",
+      "problem": "The JPQL date-range predicates filter exclusively on c.startDate: conferences whose startDate precedes :from but whose endDate falls within or after the queried range are excluded by the c.startDate >= :from clause.",
+      "impact": "Multi-day conferences that are in progress or span the filter boundary silently disappear from results; users receive an incomplete list with no indication that events were omitted.",
+      "recommendation": "Add an OR branch covering end-date overlap: OR (c.endDate IS NOT NULL AND c.endDate >= :from AND (:to IS NULL OR c.startDate <= :to)). Apply the same change to the countQuery."
+    },
+    {
+      "id": "CR-002",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 29,
+      "title": "Empty-string status not normalized to null",
+      "problem": "ConferenceService line 29 uses (status != null) ? status.trim() : null, which maps an empty-string ?status= to \"\" rather than null. The JPQL predicate then evaluates UPPER(c.status) = UPPER(''), matching no row.",
+      "impact": "Any client sending ?status= (curl, Swagger, integration tests) receives zero results instead of all conferences. The UI is accidentally protected by api.js's if (status) falsy-guard, not a deliberate service contract.",
+      "recommendation": "Replace line 29 with: String statusParam = (status != null && !status.isBlank()) ? status.trim() : null;"
+    },
+    {
+      "id": "CR-003",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/test/java/com/brownevents/app/controller/ConferenceControllerTest.java",
+      "title": "No regression test for from > to returning 400",
+      "problem": "ConferenceControllerTest contains exactly one test (valid-range returning 200). The from > to guard introduced at ConferenceController.java:68-69 has no test coverage.",
+      "impact": "The central BEVJ-201 fix — rejecting inverted date ranges with a 400 Bad Request — can be silently removed without any test failing.",
+      "recommendation": "Add: mockMvc.perform(get(\"/api/conferences\").param(\"from\",\"2026-12-31\").param(\"to\",\"2026-01-01\")).andExpect(status().isBadRequest());"
+    },
+    {
+      "id": "CR-004",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "frontend/src/api.js",
+      "line": 13,
+      "title": "getConferences parses JSON without checking response.ok",
+      "problem": "api.js line 13 calls response.json() unconditionally. When the backend returns a 400 with an empty body — the from > to guard at ConferenceController.java:69 does .build() — this throws SyntaxError: Unexpected end of JSON input. The pattern is repeated across all api.js fetch functions.",
+      "impact": "Any HTTP error response with an empty or non-JSON body propagates as a cryptic SyntaxError to the caller's catch handler rather than a readable message; the entire API layer is fragile to server-side error responses.",
+      "recommendation": "Insert before each response.json() call: if (!response.ok) throw new Error(`HTTP ${response.status}`); Apply this guard to all functions in api.js."
+    },
+    {
+      "id": "CR-005",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "frontend/src/pages/ConferenceListPage.jsx",
+      "line": 60,
+      "title": "Stale conference cards not cleared on invalid date range",
+      "problem": "The useEffect early-return for fromDate > toDate (lines 60-63) calls setLoading(false) but never calls setConferences([]). Previously fetched conference cards remain in component state.",
+      "impact": "After a user enters an inverted date range following a successful fetch, the page simultaneously displays both the inline 'From must not be after To' error and the previous set of conference cards, misleading the user into thinking results are current.",
+      "recommendation": "Add setConferences([]); setTotalElements(0); setTotalPages(0); before setLoading(false) at line 61 to clear stale display state on the invalid-range path."
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "branch": "BEVJ-201-converence-search-filtering",
+  "head": "e49bca406e017372a0c333cc90783d82618012e7",
+  "runner": "custom",
+  "started_at": "2026-09-09T01:45:23Z",
+  "completed_at": "2026-09-09T01:47:49Z",
+  "status": "PASSED",
+  "drift_detected": false,
+  "gates": [
+    {
+      "id": "build-backend",
+      "source": "guide",
+      "status": "PASS",
+      "duration_ms": 2804,
+      "command": "cd backend && mvn compile",
+      "exit_code": 0
+    },
+    {
+      "id": "unit",
+      "source": "guide",
+      "status": "PASS",
+      "duration_ms": 6900,
+      "command": "cd backend && mvn test",
+      "exit_code": 0
+    },
+    {
+      "id": "build-frontend",
+      "source": "guide",
+      "status": "PASS",
+      "duration_ms": 794,
+      "command": "cd frontend && npm run build",
+      "exit_code": 0
+    },
+    {
+      "id": "ui",
+      "source": "guide",
+      "status": "SKIPPED",
+      "duration_ms": 0,
+      "command": "npm run test:ui",
+      "exit_code": null,
+      "notes": "UI surface changed (frontend/src/pages/ConferenceListPage.jsx matches .jsx glob) but no test:ui or test script in frontend/package.json. Browser verification is a separate caller decision."
+    }
+  ],
+  "failures": {}
+}
