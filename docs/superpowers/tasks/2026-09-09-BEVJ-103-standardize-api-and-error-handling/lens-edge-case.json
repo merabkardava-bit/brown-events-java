@@ -1,0 +1,58 @@
+[
+  {
+    "location": "backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java:26-32",
+    "trigger_condition": "POST or PUT request body contains malformed JSON; HttpMessageNotReadableException raised",
+    "guard_snippet": "@ExceptionHandler(HttpMessageNotReadableException.class) return ResponseEntity.badRequest().body(new ErrorResponse(400, \"Bad Request\", \"Malformed or unreadable request body\"));",
+    "potential_consequence": "Client-side syntax error returns 500 Internal Server Error instead of 400"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java:26-32",
+    "trigger_condition": "Non-numeric value supplied as path variable, e.g. GET /api/conferences/abc; MethodArgumentTypeMismatchException raised",
+    "guard_snippet": "@ExceptionHandler(MethodArgumentTypeMismatchException.class) return ResponseEntity.badRequest().body(new ErrorResponse(400, \"Bad Request\", \"Invalid path variable type\"));",
+    "potential_consequence": "Type mismatch on path variable returns 500 instead of 400"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java:26-32",
+    "trigger_condition": "Any code or library throws Spring ResponseStatusException carrying a custom status code",
+    "guard_snippet": "@ExceptionHandler(ResponseStatusException.class) return ResponseEntity.status(ex.getStatus()).body(new ErrorResponse(ex.getRawStatusCode(), ex.getStatus().getReasonPhrase(), ex.getReason()));",
+    "potential_consequence": "Intended HTTP status overridden with 500; correct status silently discarded"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java:49",
+    "trigger_condition": "Client omits status field in PUT body; conf.getStatus() returns null before .toUpperCase() call",
+    "guard_snippet": "if (conf.getStatus() != null) existing.setStatus(conf.getStatus().toUpperCase());",
+    "potential_consequence": "NullPointerException swallowed as 500; update request with absent status field always fails"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java:43-45",
+    "trigger_condition": "GET /api/conferences/{id}/registrations called with an ID that does not exist",
+    "guard_snippet": "conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException(\"Conference not found\"));",
+    "potential_consequence": "Non-existent conference returns 200 with empty data instead of documented 404"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java:47-51",
+    "trigger_condition": "DELETE /api/conferences/{id}/registrations/{rid} where rid does not exist at all",
+    "guard_snippet": "if (!registrationRepository.existsById(registrationId)) throw new ResourceNotFoundException(\"Registration not found\");",
+    "potential_consequence": "Non-existent registration returns 400 with misleading \"does not belong\" message instead of documented 404"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java:53-55",
+    "trigger_condition": "GET /api/conferences/{id}/sessions called with an ID that does not exist",
+    "guard_snippet": "conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(\"Conference not found\"));",
+    "potential_consequence": "Non-existent conference ID returns 200 with empty sessions page instead of documented 404"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/controller/ConferenceController.java:69-71",
+    "trigger_condition": "from query parameter is chronologically after to; explicit ResponseEntity.badRequest().build() returns null body",
+    "guard_snippet": "return ResponseEntity.badRequest().body(new com.brownevents.app.ErrorResponse(400, \"Bad Request\", \"from must not be after to\"));",
+    "potential_consequence": "Date-range validation failure returns 400 with empty body, inconsistent with ErrorResponse standard the change establishes"
+  },
+  {
+    "location": "backend/src/main/java/com/brownevents/app/controller/RegistrationController.java:98-103 (removed flat List<Registration> return)",
+    "trigger_condition": "GET /api/conferences/{id}/registrations now returns {\"data\":[...]}; frontend consumer checks Array.isArray(data) before use",
+    "guard_snippet": "update frontend/src/pages/ConferenceDetailPage.jsx:66 to: const list = data.data || data; setRegistrations(Array.isArray(list) ? list : [])",
+    "potential_consequence": "Registrations tab always renders empty; existing registrations invisible in the UI",
+    "kind": "deletion",
+    "confidence": "high"
+  }
+]

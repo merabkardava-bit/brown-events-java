@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "runner": "custom",
+  "gates": [
+    {
+      "id": "backend-compile",
+      "command": "cd backend && mvn compile",
+      "source": "runner"
+    },
+    {
+      "id": "backend-test",
+      "command": "cd backend && mvn test",
+      "source": "runner"
+    },
+    {
+      "id": "frontend-build",
+      "command": "cd frontend && npm run build",
+      "source": "runner"
+    }
+  ],
+  "ui_globs": [
+    "\\.(tsx|jsx|css|html|vue|svelte)$",
+    "src/(ui|frontend|components)/"
+  ],
+  "detected_at": "2026-09-09T08:58:13+04:00"
+}

@@ -11,12 +11,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Tag(name = "Speakers", description = "Create and list speakers who can be assigned to conference sessions.")
 @RestController
@@ -47,8 +46,8 @@ public class SpeakerController {
             )
     })
     @GetMapping
-    public ResponseEntity<List<Speaker>> getAllSpeakers() {
-        return ResponseEntity.ok(speakerService.getAllSpeakers());
+    public ResponseEntity<com.brownevents.app.ApiResponse<List<Speaker>>> getAllSpeakers() {
+        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(speakerService.getAllSpeakers()));
     }
 
     // ── POST /api/speakers ────────────────────────────────────────────────────
@@ -60,7 +59,7 @@ public class SpeakerController {
     )
     @ApiResponses({
             @ApiResponse(
-                    responseCode = "200",
+                    responseCode = "201",
                     description = "Speaker created successfully.",
                     content = @Content(
                             mediaType = "application/json",
@@ -73,7 +72,7 @@ public class SpeakerController {
             )
     })
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createSpeaker(
+    public ResponseEntity<com.brownevents.app.ApiResponse<Speaker>> createSpeaker(
             @RequestBody(
                     description = "Speaker details to register.",
                     required = true,
@@ -92,9 +91,6 @@ public class SpeakerController {
                     )
             )
             @org.springframework.web.bind.annotation.RequestBody Speaker speaker) {
-        Speaker created = speakerService.createSpeaker(speaker);
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", created);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(speakerService.createSpeaker(speaker)));
     }
 }

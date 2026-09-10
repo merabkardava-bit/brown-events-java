@@ -13,12 +13,17 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import com.brownevents.app.entity.Session;
+import com.brownevents.app.exception.ResourceNotFoundException;
+
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -149,5 +154,31 @@ public class ConferenceServiceTest {
         assertEquals(10L, result.getId());
         assertEquals("New Conference", result.getTitle());
         verify(conferenceRepository, times(1)).save(input);
+    }
+
+    @Test
+    public void getConference_notFound_shouldThrowResourceNotFoundException() {
+        when(conferenceRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> conferenceService.getConference(99L));
+        verify(conferenceRepository, times(1)).findById(99L);
+    }
+
+    @Test
+    public void updateConference_notFound_shouldThrowResourceNotFoundException() {
+        when(conferenceRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> conferenceService.updateConference(99L, new Conference()));
+        verify(conferenceRepository, times(1)).findById(99L);
+    }
+
+    @Test
+    public void createSession_conferenceNotFound_shouldThrowResourceNotFoundException() {
+        when(conferenceRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> conferenceService.createSession(99L, new Session()));
+        verify(conferenceRepository, times(1)).findById(99L);
     }
 }

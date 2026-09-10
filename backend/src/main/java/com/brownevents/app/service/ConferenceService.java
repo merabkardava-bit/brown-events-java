@@ -2,6 +2,7 @@ package com.brownevents.app.service;
 
 import com.brownevents.app.entity.Conference;
 import com.brownevents.app.entity.Session;
+import com.brownevents.app.exception.ResourceNotFoundException;
 import com.brownevents.app.repository.ConferenceRepository;
 import com.brownevents.app.repository.SessionRepository;
 import org.springframework.data.domain.Page;
@@ -31,7 +32,7 @@ public class ConferenceService {
     }
 
     public Conference getConference(Long id) {
-        return conferenceRepository.findById(id).get();
+        return conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
     }
 
     public Conference createConference(Conference conf) {
@@ -39,22 +40,25 @@ public class ConferenceService {
     }
 
     public Conference updateConference(Long id, Conference conf) {
-        Conference existing = conferenceRepository.findById(id).get();
+        Conference existing = conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         existing.setTitle(conf.getTitle());
         existing.setDescription(conf.getDescription());
         existing.setLocation(conf.getLocation());
         existing.setStartDate(conf.getStartDate());
         existing.setEndDate(conf.getEndDate());
-        existing.setStatus(conf.getStatus().toUpperCase());
+        if (conf.getStatus() != null) {
+            existing.setStatus(conf.getStatus().toUpperCase());
+        }
         return conferenceRepository.save(existing);
     }
 
     public Page<Session> getConferenceSessions(Long id, Pageable pageable) {
+        conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         return sessionRepository.findPageByConferenceId(id, pageable);
     }
 
     public Session createSession(Long conferenceId, Session session) {
-        Conference conference = conferenceRepository.findById(conferenceId).get();
+        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         session.setConference(conference);
         return sessionRepository.save(session);
     }

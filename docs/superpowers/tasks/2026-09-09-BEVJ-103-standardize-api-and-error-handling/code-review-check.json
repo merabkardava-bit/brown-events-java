@@ -1,0 +1,209 @@
+{
+  "decision": "request-changes",
+  "rationale": "10 of 11 prior blocking findings resolved by source-verified changes; CR-008 remains unresolved — GlobalExceptionHandlerTest.java was not modified in the fix-up, the @WebMvcTest/@Import double-registration pattern is unchanged, and the fix evidence provides a verbal investigation argument that cannot be confirmed by source inspection alone.",
+  "confidence": "medium",
+  "risk_flags": ["breaking-change", "public-api"],
+  "business_review": [
+    {
+      "kind": "spec",
+      "item": "ApiResponse<T> has a single `data` field only — no timestamp, status code, or message",
+      "status": "pass",
+      "notes": "ApiResponse.java: one final field `data`, one constructor, one getter."
+    },
+    {
+      "kind": "spec",
+      "item": "Inline new HashMap<>() pattern replaced by ApiResponse in all three affected controllers",
+      "status": "pass",
+      "notes": "HashMap/Map imports removed from SpeakerController and RegistrationController; ApiResponse used throughout."
+    },
+    {
+      "kind": "spec",
+      "item": "ErrorResponse has exactly three fields: status (int), error (str), message (str) — no timestamp, path, exception class, or stack trace",
+      "status": "pass",
+      "notes": "ErrorResponse.java: three final fields only."
+    },
+    {
+      "kind": "spec",
+      "item": "Catch-all handler logs ex.getMessage() at ERROR level but does not include it in the response body",
+      "status": "pass",
+      "notes": "Response body hardcoded to \"An unexpected error occurred\"; ex.getMessage() appears only in log.error."
+    },
+    {
+      "kind": "spec",
+      "item": "GlobalExceptionHandler placed in com.brownevents.app root package, annotated @ControllerAdvice",
+      "status": "pass",
+      "notes": "Confirmed in GlobalExceptionHandler.java."
+    },
+    {
+      "kind": "spec",
+      "item": "ResourceNotFoundException(String) in com.brownevents.app.exception, extends RuntimeException, one constructor",
+      "status": "pass",
+      "notes": "Correct package, extends RuntimeException, single-arg constructor."
+    },
+    {
+      "kind": "spec",
+      "item": "RegistrationMismatchException(String) in com.brownevents.app.exception, extends RuntimeException",
+      "status": "pass",
+      "notes": "Correct; RegistrationService uses it instead of IllegalArgumentException."
+    },
+    {
+      "kind": "spec",
+      "item": "ConferenceService: 3 bare .get() calls replaced with .orElseThrow(ResourceNotFoundException)",
+      "status": "pass",
+      "notes": "getConference, updateConference, createSession — all three replaced."
+    },
+    {
+      "kind": "spec",
+      "item": "SessionService: 3 bare .get() calls replaced with .orElseThrow(ResourceNotFoundException)",
+      "status": "pass",
+      "notes": "createSession (conference lookup), getSession, updateSession — all three replaced."
+    },
+    {
+      "kind": "spec",
+      "item": "RegistrationService: bare .get() replaced with orElseThrow(ResourceNotFoundException); IllegalArgumentException replaced with RegistrationMismatchException",
+      "status": "pass",
+      "notes": "Both replacements confirmed in current source."
+    },
+    {
+      "kind": "spec",
+      "item": "DELETE /api/conferences/{id}/registrations/{rid} endpoint unchanged (remains 204 noContent)",
+      "status": "pass",
+      "notes": "Endpoint not present in diff; unchanged."
+    },
+    {
+      "kind": "spec",
+      "item": "ConferenceControllerTest has a new POST test asserting status().isCreated() and a $.data JSON path match",
+      "status": "pass",
+      "notes": "createConference_shouldReturn201WithDataEnvelope satisfies both assertions."
+    },
+    {
+      "kind": "spec",
+      "item": "GlobalExceptionHandlerTest: tests 404, 400, and 500 shapes; verifies internal message not exposed",
+      "status": "pass",
+      "notes": "4 test methods covering all three handler branches."
+    },
+    {
+      "kind": "spec",
+      "item": "AC1: All 12 non-204 endpoints return a JSON body whose top-level structure contains a `data` field",
+      "status": "pass",
+      "notes": "10 changed endpoints wrapped in ApiResponse; two paginated endpoints use HashMap with explicit `data` key."
+    },
+    {
+      "kind": "spec",
+      "item": "AC2: POST /api/conferences, POST /{id}/sessions, POST /{id}/register, POST /api/speakers all return HTTP 201",
+      "status": "pass",
+      "notes": "All four use ResponseEntity.status(HttpStatus.CREATED)."
+    },
+    {
+      "kind": "spec",
+      "item": "AC3: Non-existent conference or session → HTTP 404 with ErrorResponse, no stack trace",
+      "status": "pass",
+      "notes": "GlobalExceptionHandler handleNotFound returns ErrorResponse(404); services throw ResourceNotFoundException with matching messages."
+    },
+    {
+      "kind": "spec",
+      "item": "AC4: Deleting registration not belonging to conference → HTTP 400 with structured error body, no stack trace",
+      "status": "pass",
+      "notes": "GlobalExceptionHandler handleMismatch returns ErrorResponse(400); RegistrationService throws RegistrationMismatchException."
+    },
+    {
+      "kind": "spec",
+      "item": "AC5: Unhandled exception → HTTP 500 with safe message, internal message absent from response",
+      "status": "pass",
+      "notes": "handleUnexpected hardcodes safe message; ex.getMessage() only in log.error."
+    },
+    {
+      "kind": "spec",
+      "item": "AC6: ConferenceControllerTest contains at least one test asserting status().isCreated() and $.data JSON path for a POST endpoint",
+      "status": "pass",
+      "notes": "createConference_shouldReturn201WithDataEnvelope satisfies both assertions."
+    },
+    {
+      "kind": "spec",
+      "item": "AC7: All four POST endpoint Swagger @ApiResponse annotations show responseCode = \"201\"",
+      "status": "pass",
+      "notes": "All four POST endpoints confirmed updated."
+    },
+    {
+      "kind": "spec",
+      "item": "AC8: application.properties is unchanged — no server.error.* properties added or modified",
+      "status": "pass",
+      "notes": "Not present in diff; unchanged."
+    }
+  ],
+  "standards_review": [
+    {
+      "kind": "commit-format",
+      "status": "na",
+      "notes": "No standards guide; profile intentionally omits standards (standards_expected: false)."
+    },
+    {
+      "kind": "code-quality",
+      "status": "na",
+      "notes": "No standards guide; profile intentionally omits standards (standards_expected: false)."
+    },
+    {
+      "kind": "security",
+      "status": "na",
+      "notes": "No standards guide; profile intentionally omits standards (standards_expected: false)."
+    }
+  ],
+  "findings": [],
+  "finding_status": [
+    {
+      "id": "CR-001",
+      "status": "resolved",
+      "notes": "ConferenceController.java:69-74 now returns a Map body with status=400, error='Bad Request', message fields on date-range validation failure; the 400 is no longer bodyless."
+    },
+    {
+      "id": "CR-002",
+      "status": "resolved",
+      "notes": "GlobalExceptionHandler extends ResponseEntityExceptionHandler; @ExceptionHandler(MethodArgumentTypeMismatchException.class) and handleHttpMessageNotReadable override both confirmed present."
+    },
+    {
+      "id": "CR-003",
+      "status": "resolved",
+      "notes": "ConferenceService.java:49 guards if (conf.getStatus() != null) before calling toUpperCase(); NPE on missing status field is fixed."
+    },
+    {
+      "id": "CR-004",
+      "status": "resolved",
+      "notes": "ConferenceService.getConferenceSessions calls conferenceRepository.findById(id).orElseThrow(ResourceNotFoundException) before the session query; missing conference now returns 404."
+    },
+    {
+      "id": "CR-005",
+      "status": "resolved",
+      "notes": "RegistrationService.getRegistrations calls conferenceRepository.findById(conferenceId).orElseThrow(ResourceNotFoundException) at method entry; missing conference now returns 404."
+    },
+    {
+      "id": "CR-006",
+      "status": "resolved",
+      "notes": "RegistrationService.deleteRegistration checks existsById first and throws ResourceNotFoundException for an absent registration before the conference-membership check; absent registration now returns 404."
+    },
+    {
+      "id": "CR-007",
+      "status": "resolved",
+      "notes": "RegistrationServiceTest.java exists at HEAD with 3 tests: deleteRegistration not-found (ResourceNotFoundException), deleteRegistration mismatch (RegistrationMismatchException), getRegistrations conference not-found (ResourceNotFoundException)."
+    },
+    {
+      "id": "CR-008",
+      "status": "unresolved",
+      "notes": "GlobalExceptionHandlerTest.java was not in changed_files and is unchanged at HEAD; @WebMvcTest(controllers = TestController.class) + @Import({GlobalExceptionHandler.class, TestController.class}) double-registration pattern is still present. Fix evidence provides a verbal investigation argument but no source-verifiable change was applied."
+    },
+    {
+      "id": "CR-009",
+      "status": "resolved",
+      "notes": "ConferenceServiceTest.java adds getConference_notFound, updateConference_notFound, and createSession_conferenceNotFound ResourceNotFoundException tests; all three confirmed present."
+    },
+    {
+      "id": "CR-010",
+      "status": "resolved",
+      "notes": "SessionServiceTest.java adds updateSession_notFound_shouldThrowResourceNotFoundException mirroring the getSession_notFound pattern; confirmed present."
+    },
+    {
+      "id": "CR-011",
+      "status": "resolved",
+      "notes": "api.js:getConferenceRegistrations now returns res.data ?? res, unwrapping the {data:[...]} envelope before returning; ConferenceDetailPage.jsx:66 Array.isArray(data) now receives the array and evaluates true."
+    }
+  ]
+}

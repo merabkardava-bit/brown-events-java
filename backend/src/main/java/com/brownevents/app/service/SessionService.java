@@ -2,6 +2,7 @@ package com.brownevents.app.service;
 
 import com.brownevents.app.entity.Conference;
 import com.brownevents.app.entity.Session;
+import com.brownevents.app.exception.ResourceNotFoundException;
 import com.brownevents.app.repository.ConferenceRepository;
 import com.brownevents.app.repository.SessionRepository;
 import org.springframework.stereotype.Service;
@@ -18,17 +19,17 @@ public class SessionService {
     }
 
     public Session createSession(Long conferenceId, Session session) {
-        Conference conference = conferenceRepository.findById(conferenceId).get();
+        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         session.setConference(conference);
         return sessionRepository.save(session);
     }
 
     public Session getSession(Long id) {
-        return sessionRepository.findById(id).get();
+        return sessionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Session not found"));
     }
 
     public Session updateSession(Long id, Session session) {
-        Session existing = sessionRepository.findById(id).get();
+        Session existing = sessionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Session not found"));
         existing.setTitle(session.getTitle());
         existing.setDescription(session.getDescription());
         existing.setStartTime(session.getStartTime());

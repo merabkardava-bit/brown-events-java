@@ -45,6 +45,17 @@ public class SessionServiceTest {
     }
 
     @Test
+    public void getSession_notFound_shouldThrowResourceNotFoundException() {
+        when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.brownevents.app.exception.ResourceNotFoundException.class,
+                () -> sessionService.getSession(99L)
+        );
+        verify(sessionRepository, times(1)).findById(99L);
+    }
+
+    @Test
     public void createSession_shouldSetConferenceAndSave() {
         Long conferenceId = 5L;
 
@@ -73,5 +84,16 @@ public class SessionServiceTest {
         assertEquals(conferenceId, result.getConference().getId());
         verify(conferenceRepository, times(1)).findById(conferenceId);
         verify(sessionRepository, times(1)).save(inputSession);
+    }
+
+    @Test
+    public void updateSession_notFound_shouldThrowResourceNotFoundException() {
+        when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.brownevents.app.exception.ResourceNotFoundException.class,
+                () -> sessionService.updateSession(99L, new Session())
+        );
+        verify(sessionRepository, times(1)).findById(99L);
     }
 }

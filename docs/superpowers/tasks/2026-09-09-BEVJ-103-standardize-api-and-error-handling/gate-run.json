@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "branch": "BEVJ-103-standardize-api-and-error-handling",
+  "head": "d081b0baf962410cf06fb2b295c198500ba7fd93",
+  "runner": "custom",
+  "started_at": "2026-09-09T08:58:13+04:00",
+  "completed_at": "2026-09-09T08:58:42+04:00",
+  "status": "PASSED",
+  "drift_detected": false,
+  "gates": [
+    {
+      "id": "backend-compile",
+      "source": "runner",
+      "status": "PASS",
+      "duration_ms": 2617,
+      "command": "cd backend && mvn compile",
+      "exit_code": 0
+    },
+    {
+      "id": "backend-test",
+      "source": "runner",
+      "status": "PASS",
+      "duration_ms": 16125,
+      "command": "cd backend && mvn test",
+      "exit_code": 0
+    },
+    {
+      "id": "frontend-build",
+      "source": "runner",
+      "status": "PASS",
+      "duration_ms": 1310,
+      "command": "cd frontend && npm run build",
+      "exit_code": 0
+    }
+  ],
+  "failures": {}
+}

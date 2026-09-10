@@ -1,0 +1,4 @@
+{"task_id":"task1","status":"done","commit":"e0819dd","test_command":"mvn compile -q"}
+{"task_id":"task2","status":"done","commit":"24ed70f","test_command":"mvn test -Dtest=GlobalExceptionHandlerTest -q"}
+{"task_id":"task3","status":"done","commit":"dfcdb23","test_command":"mvn test -Dtest=SessionServiceTest,ConferenceServiceTest -q"}
+{"task_id":"task4","status":"done","commit":"85fd12f","test_command":"mvn test -q"}

@@ -1,0 +1,282 @@
+{
+  "decision": "request-changes",
+  "rationale": "11 patch findings span one critical frontend regression (registrations tab always empty after API shape change), four backend 404-correctness gaps (getRegistrations, getConferenceSessions, and the two deleteRegistration error-status cases), one NPE on missing status field in updateConference, one catch-all handler that converts Spring MVC framework exceptions to 500, one inconsistent empty 400 body on date-range validation, and three test coverage gaps for changed behaviour; brief written to code-review-brief.md. 3 candidates dismissed as noise (FQN style on controller imports, redundant 500-message test, paginated list endpoint already includes a `data` key); no findings deferred.",
+  "confidence": "high",
+  "risk_flags": ["breaking-change", "public-api"],
+  "business_review": [
+    {
+      "kind": "spec",
+      "item": "ApiResponse<T> has a single `data` field only — no timestamp, status code, or message",
+      "status": "pass",
+      "notes": "ApiResponse.java: one final field `data`, one constructor, one getter."
+    },
+    {
+      "kind": "spec",
+      "item": "Inline new HashMap<>() pattern replaced by ApiResponse in all three affected controllers",
+      "status": "pass",
+      "notes": "HashMap/Map imports removed from SpeakerController and RegistrationController; ApiResponse used throughout."
+    },
+    {
+      "kind": "spec",
+      "item": "ErrorResponse has exactly three fields: status (int), error (str), message (str) — no timestamp, path, exception class, or stack trace",
+      "status": "pass",
+      "notes": "ErrorResponse.java: three final fields only."
+    },
+    {
+      "kind": "spec",
+      "item": "Catch-all handler logs ex.getMessage() at ERROR level but does not include it in the response body",
+      "status": "pass",
+      "notes": "Response body hardcoded to \"An unexpected error occurred\"; ex.getMessage() appears only in log.error."
+    },
+    {
+      "kind": "spec",
+      "item": "GlobalExceptionHandler placed in com.brownevents.app root package, annotated @ControllerAdvice",
+      "status": "pass",
+      "notes": "Confirmed in GlobalExceptionHandler.java."
+    },
+    {
+      "kind": "spec",
+      "item": "ResourceNotFoundException(String) in com.brownevents.app.exception, extends RuntimeException, one constructor",
+      "status": "pass",
+      "notes": "Correct package, extends RuntimeException, single-arg constructor."
+    },
+    {
+      "kind": "spec",
+      "item": "RegistrationMismatchException(String) in com.brownevents.app.exception, extends RuntimeException",
+      "status": "pass",
+      "notes": "Correct; RegistrationService uses it instead of IllegalArgumentException."
+    },
+    {
+      "kind": "spec",
+      "item": "ConferenceService: 3 bare .get() calls replaced with .orElseThrow(ResourceNotFoundException)",
+      "status": "pass",
+      "notes": "getConference, updateConference, createSession — all three replaced."
+    },
+    {
+      "kind": "spec",
+      "item": "SessionService: 3 bare .get() calls replaced with .orElseThrow(ResourceNotFoundException)",
+      "status": "pass",
+      "notes": "createSession (conference lookup), getSession, updateSession — all three replaced."
+    },
+    {
+      "kind": "spec",
+      "item": "RegistrationService: bare .get() replaced with orElseThrow(ResourceNotFoundException); IllegalArgumentException replaced with RegistrationMismatchException",
+      "status": "pass",
+      "notes": "Both replacements confirmed in current source."
+    },
+    {
+      "kind": "spec",
+      "item": "DELETE /api/conferences/{id}/registrations/{rid} endpoint unchanged (remains 204 noContent)",
+      "status": "pass",
+      "notes": "Endpoint not present in diff; unchanged."
+    },
+    {
+      "kind": "spec",
+      "item": "ConferenceControllerTest has a new POST test asserting status().isCreated() and a $.data JSON path match",
+      "status": "pass",
+      "notes": "createConference_shouldReturn201WithDataEnvelope satisfies both assertions."
+    },
+    {
+      "kind": "spec",
+      "item": "GlobalExceptionHandlerTest: tests 404, 400, and 500 shapes; verifies internal message not exposed",
+      "status": "pass",
+      "notes": "4 test methods covering all three handler branches."
+    },
+    {
+      "kind": "spec",
+      "item": "AC1: All 12 non-204 endpoints return a JSON body whose top-level structure contains a `data` field",
+      "status": "pass",
+      "notes": "10 changed endpoints wrapped in ApiResponse; two paginated endpoints use HashMap with explicit `data` key."
+    },
+    {
+      "kind": "spec",
+      "item": "AC2: POST /api/conferences, POST /{id}/sessions, POST /{id}/register, POST /api/speakers all return HTTP 201",
+      "status": "pass",
+      "notes": "All four use ResponseEntity.status(HttpStatus.CREATED)."
+    },
+    {
+      "kind": "spec",
+      "item": "AC3: Non-existent conference or session → HTTP 404 with ErrorResponse, no stack trace",
+      "status": "pass",
+      "notes": "GlobalExceptionHandler handleNotFound returns ErrorResponse(404); services throw ResourceNotFoundException with matching messages."
+    },
+    {
+      "kind": "spec",
+      "item": "AC4: Deleting registration not belonging to conference → HTTP 400 with structured error body, no stack trace",
+      "status": "pass",
+      "notes": "GlobalExceptionHandler handleMismatch returns ErrorResponse(400); RegistrationService throws RegistrationMismatchException."
+    },
+    {
+      "kind": "spec",
+      "item": "AC5: Unhandled exception → HTTP 500 with safe message, internal message absent from response",
+      "status": "pass",
+      "notes": "handleUnexpected hardcodes safe message; ex.getMessage() only in log.error."
+    },
+    {
+      "kind": "spec",
+      "item": "AC6: ConferenceControllerTest contains at least one test asserting status().isCreated() and $.data JSON path for a POST endpoint",
+      "status": "pass",
+      "notes": "createConference_shouldReturn201WithDataEnvelope satisfies both assertions."
+    },
+    {
+      "kind": "spec",
+      "item": "AC7: All four POST endpoint Swagger @ApiResponse annotations show responseCode = \"201\"",
+      "status": "pass",
+      "notes": "All four POST endpoints confirmed updated."
+    },
+    {
+      "kind": "spec",
+      "item": "AC8: application.properties is unchanged — no server.error.* properties added or modified",
+      "status": "pass",
+      "notes": "Not present in diff; unchanged."
+    }
+  ],
+  "standards_review": [
+    {
+      "kind": "commit-format",
+      "status": "na",
+      "notes": "No standards guide; profile intentionally omits standards (standards_expected: false)."
+    },
+    {
+      "kind": "code-quality",
+      "status": "na",
+      "notes": "No standards guide; profile intentionally omits standards (standards_expected: false)."
+    },
+    {
+      "kind": "security",
+      "status": "na",
+      "notes": "No standards guide; profile intentionally omits standards (standards_expected: false)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "CR-001",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/controller/ConferenceController.java",
+      "line": 70,
+      "title": "Date-range validation returns 400 with empty body",
+      "problem": "When `from` is after `to`, the handler calls `ResponseEntity.badRequest().<Map<String, Object>>build()`, producing a 400 response with no body.",
+      "impact": "Clients relying on the ErrorResponse contract receive a bodyless 400; error-handling middleware that parses `$.status` or `$.message` fails silently. This is the only endpoint in the change that violates the structured-error rule it establishes.",
+      "recommendation": "Replace `.build()` with `.body(new ErrorResponse(400, \"Bad Request\", \"\\\"from\\\" must not be after \\\"to\\\"\"))` to emit a structured error body consistent with all other error paths."
+    },
+    {
+      "id": "CR-002",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/GlobalExceptionHandler.java",
+      "line": 29,
+      "title": "Catch-all converts Spring MVC framework exceptions to 500",
+      "problem": "`GlobalExceptionHandler` does not extend `ResponseEntityExceptionHandler`. `ExceptionHandlerExceptionResolver` (ORDER 1) intercepts Spring MVC's own exceptions — `HttpMessageNotReadableException` (malformed JSON), `MethodArgumentTypeMismatchException` (bad path variable type), `NoHandlerFoundException` — before `DefaultHandlerExceptionResolver` (ORDER 3) can map them to 400/404. All fall through to `@ExceptionHandler(Exception.class)` and return 500.",
+      "impact": "Clients sending malformed JSON or a non-numeric path variable receive a 500 instead of 400/404. The established ErrorResponse contract is violated for the most common client mistakes; automated clients parsing the status field will interpret user errors as server failures.",
+      "recommendation": "Extend `ResponseEntityExceptionHandler` and override `handleHttpMessageNotReadable` and `handleMethodArgumentTypeMismatch` (or add a dedicated `@ExceptionHandler(MethodArgumentTypeMismatchException.class)`) to return structured `ErrorResponse` bodies at the correct status codes."
+    },
+    {
+      "id": "CR-003",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 49,
+      "title": "Null status field causes NullPointerException in updateConference",
+      "problem": "`updateConference` calls `conf.getStatus().toUpperCase()` unconditionally. A PUT request body that omits `status` causes a NullPointerException caught by the `Exception.class` handler, which returns 500.",
+      "impact": "Any PUT request without the `status` field returns an opaque 500 instead of a meaningful error. Partial-update requests that are otherwise valid always fail.",
+      "recommendation": "Add a null guard: `if (conf.getStatus() != null) existing.setStatus(conf.getStatus().toUpperCase());` — or explicitly reject a null status with a 400 Bad Request if the field is required."
+    },
+    {
+      "id": "CR-004",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/ConferenceService.java",
+      "line": 53,
+      "title": "getConferenceSessions returns 200 with empty page for missing conference",
+      "problem": "`getConferenceSessions` calls `sessionRepository.findPageByConferenceId(id, pageable)` with no prior conference-existence check. A non-existent conference ID returns an empty `{\"data\":[]}` page with HTTP 200.",
+      "impact": "Clients cannot distinguish a valid conference with no sessions from a conference that does not exist. The 404 contract established for other `ConferenceService` methods in this change is absent here.",
+      "recommendation": "Add `conferenceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(\"Conference not found\"));` before the session query, mirroring the pattern used in `createSession`."
+    },
+    {
+      "id": "CR-005",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java",
+      "line": 43,
+      "title": "getRegistrations returns 200 with empty list for missing conference",
+      "problem": "`getRegistrations` at line 43-44 calls `registrationRepository.findByConferenceId(conferenceId)` directly with no conference-existence check. A non-existent conference ID returns an empty list with HTTP 200.",
+      "impact": "Clients cannot distinguish a real empty registration list from a non-existent conference. This is the same class of defect as CR-004 and was explicitly left unaddressed in the diff while all sibling methods in the service were updated.",
+      "recommendation": "Add `conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException(\"Conference not found\"));` before the repository call."
+    },
+    {
+      "id": "CR-006",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java",
+      "line": 47,
+      "title": "deleteRegistration returns misleading 400 instead of 404 for absent registration",
+      "problem": "`existsByIdAndConferenceId` returns false for two distinct cases: the registration does not exist at all, and the registration exists but belongs to a different conference. Both throw `RegistrationMismatchException` → 400 with message \"Registration does not belong to this conference\".",
+      "impact": "A completely absent registration ID returns a misleading 400 \"does not belong\" message instead of a correct 404, violating the HTTP semantics this change was intended to establish.",
+      "recommendation": "Add a prior existence check: `if (!registrationRepository.existsById(registrationId)) throw new ResourceNotFoundException(\"Registration not found\");` before the conference-membership check."
+    },
+    {
+      "id": "CR-007",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/main/java/com/brownevents/app/service/RegistrationService.java",
+      "title": "RegistrationService exception contract not tested at service level",
+      "problem": "`GlobalExceptionHandlerTest.mismatch_shouldReturn400WithErrorShape` exercises the handler by throwing `RegistrationMismatchException` directly from a stub controller that bypasses `RegistrationService`. A reversion of `deleteRegistration` to throwing `IllegalArgumentException` would not be caught by any test; the test suite would still pass.",
+      "impact": "The service-to-handler contract for registration mismatch errors has no regression protection at the service layer. No `RegistrationServiceTest` exists in the project.",
+      "recommendation": "Add a `RegistrationServiceTest` with at least: `assertThrows(RegistrationMismatchException.class, () -> registrationService.deleteRegistration(conferenceId, nonMatchingId))`."
+    },
+    {
+      "id": "CR-008",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/test/java/com/brownevents/app/GlobalExceptionHandlerTest.java",
+      "line": 17,
+      "title": "TestController double-registered via @WebMvcTest and @Import",
+      "problem": "`@WebMvcTest(controllers = TestController.class)` registers `TestController`; `@Import({GlobalExceptionHandler.class, TestController.class})` imports it again. With Spring Boot's default `spring.main.allow-bean-definition-overriding=false`, this can cause a `BeanDefinitionOverrideException` at test startup. Confirmed present in source; whether it fails in practice is uncertain across Spring Boot 2.7.x patch versions.",
+      "impact": "The test class may fail to start on some configurations, silently disabling all exception-handler test coverage.",
+      "recommendation": "Remove `TestController.class` from the `@Import` list, keeping only `@Import({GlobalExceptionHandler.class})`."
+    },
+    {
+      "id": "CR-009",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/test/java/com/brownevents/app/service/ConferenceServiceTest.java",
+      "title": "No ResourceNotFoundException tests for ConferenceService not-found paths",
+      "problem": "This change adds `orElseThrow(() -> new ResourceNotFoundException(...))` to `getConference`, `updateConference`, and `createSession` in `ConferenceService`. `ConferenceServiceTest` adds no not-found test for any of them, while `SessionServiceTest` introduces the pattern for `getSession`.",
+      "impact": "The 404 contract for all three conference service operations is completely untested. A regression (e.g., reverting any orElseThrow to `.get()`) would go undetected.",
+      "recommendation": "Add `@Test` methods asserting `assertThrows(ResourceNotFoundException.class, ...)` for `getConference(99L)`, `updateConference(99L, ...)`, and `createSession(99L, ...)` in `ConferenceServiceTest`."
+    },
+    {
+      "id": "CR-010",
+      "kind": "code",
+      "severity": "major",
+      "triage": "patch",
+      "file": "backend/src/test/java/com/brownevents/app/service/SessionServiceTest.java",
+      "title": "updateSession not-found path has no test",
+      "problem": "`SessionService.updateSession` was changed in this diff to use `.orElseThrow(() -> new ResourceNotFoundException(\"Session not found\"))`. `SessionServiceTest` adds `getSession_notFound_shouldThrowResourceNotFoundException` but has no counterpart for `updateSession`.",
+      "impact": "The not-found contract for `updateSession` (PUT /api/sessions/{id}) is untested; a reversion of that orElseThrow would not be detected.",
+      "recommendation": "Add `updateSession_notFound_shouldThrowResourceNotFoundException` to `SessionServiceTest`, mirroring the existing `getSession_notFound` pattern."
+    },
+    {
+      "id": "CR-011",
+      "kind": "code",
+      "severity": "critical",
+      "triage": "patch",
+      "file": "frontend/src/pages/ConferenceDetailPage.jsx",
+      "line": 66,
+      "title": "Registrations tab always empty after API response shape change",
+      "problem": "`RegistrationController.getRegistrations` was changed to return `{\"data\": [...]}` instead of a bare JSON array. `frontend/src/api.js:getConferenceRegistrations` returns `response.json()` directly, which is now the envelope object. `ConferenceDetailPage.jsx:66` calls `setRegistrations(Array.isArray(data) ? data : [])` — `Array.isArray({data:[...]})` is always false, so every successful response sets the registrations list to `[]`.",
+      "impact": "The registrations tab always renders \"No registrations yet\" after this change regardless of real data. Existing registrations are invisible in the UI. This is a live runtime regression introduced by the API contract change without a corresponding frontend update.",
+      "recommendation": "Update `ConferenceDetailPage.jsx:66` to `setRegistrations(Array.isArray(data.data) ? data.data : [])`. Additionally update `api.js:getConferenceRegistrations` to unwrap the envelope consistently: `const res = await response.json(); return res.data ?? res;`."
+    }
+  ]
+}
