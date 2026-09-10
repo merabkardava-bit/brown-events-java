@@ -78,3 +78,13 @@ necessary Spring/PostgreSQL config:
    parameter $4` because `:from IS NULL` in JPQL gives it no type hint. Fixed by changing to
    `cast(:from as date) IS NULL`. The `@WebMvcTest` added for bug 1 couldn't catch this because
    it mocks the service and never hits the database.
+
+### BEVJ-103 — Standardize API Responses and Error Handling
+
+Used `/sdlc-standard` to implement uniform API response shapes and centralized error handling.
+Added `ApiResponse<T>` envelope, `ErrorResponse` DTO, and a `GlobalExceptionHandler` (`@ControllerAdvice`)
+that maps typed exceptions to 404/400 and catches everything else as a safe 500 with no stack trace exposed.
+All four controllers were updated and 8 bare `Optional.get()` call sites replaced with `orElseThrow`.
+Code review caught a critical runtime regression — the registrations tab went blank because `api.js` was
+calling `Array.isArray()` on the new envelope object — and several missing 404 checks in the service layer.
+All 11 findings were resolved before merge.
