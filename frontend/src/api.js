@@ -64,5 +64,9 @@ export async function registerAttendee(conferenceId, attendeeData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(attendeeData)
   });
-  return response.json();
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.message || `Registration failed (${response.status})`);
+  }
+  return body;
 }

@@ -31,6 +31,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(new ErrorResponse(400, "Bad Request", ex.getMessage()));
     }
 
+    @ExceptionHandler(com.brownevents.app.exception.RegistrationClosedException.class)
+    public ResponseEntity<ErrorResponse> handleRegistrationClosed(com.brownevents.app.exception.RegistrationClosedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(409, "Conflict", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
