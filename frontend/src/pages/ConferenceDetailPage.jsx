@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getConference, getConferenceSessions, getConferenceRegistrations, deleteRegistration, registerAttendee } from '../api'
 import SessionList from '../components/SessionList'
+import { isRegistrationOpen, registrationClosedNotice } from '../registrationEligibility'
 
 
 export default function ConferenceDetailPage() {
@@ -366,17 +367,18 @@ export default function ConferenceDetailPage() {
             <h2 className="detail-section__title" style={{ marginBottom: 0, borderBottom: 'none' }}>
               Registrations
             </h2>
-            <button
-              className="btn btn--primary"
-              onClick={handleRegisterClick}
-              disabled={conference?.status === 'cancelled' || conference?.status === 'completed'}
-            >
-              Register Now
-            </button>
+            {isRegistrationOpen(conference?.status) && (
+              <button
+                className="btn btn--primary"
+                onClick={handleRegisterClick}
+              >
+                Register Now
+              </button>
+            )}
           </div>
-          {conference?.status === 'cancelled' && (
+          {!isRegistrationOpen(conference?.status) && (
             <p style={{ color: '#6E4A2A', fontSize: '0.875rem', fontStyle: 'italic', marginBottom: '16px' }}>
-              This conference has been cancelled.
+              {registrationClosedNotice(conference?.status)}
             </p>
           )}
           {deleteError && (

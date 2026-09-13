@@ -115,6 +115,15 @@ public class DataInitializer implements CommandLineRunner {
         cloudDevOps.setStatus("COMPLETED");
         cloudDevOps = conferenceRepository.save(cloudDevOps);
 
+        Conference frontendMasters = new Conference();
+        frontendMasters.setTitle("Frontend Masters Summit");
+        frontendMasters.setDescription("Deep dive into modern web technologies, frameworks, and architecture.");
+        frontendMasters.setLocation("Seattle, WA");
+        frontendMasters.setStartDate(LocalDate.of(2024, 11, 5));
+        frontendMasters.setEndDate(LocalDate.of(2024, 11, 7));
+        frontendMasters.setStatus("CANCELLED");
+        frontendMasters = conferenceRepository.save(frontendMasters);
+
         // Sessions for Spring Tech Summit 2024
         Session session1 = new Session();
         session1.setTitle("Keynote: The Future of Spring");

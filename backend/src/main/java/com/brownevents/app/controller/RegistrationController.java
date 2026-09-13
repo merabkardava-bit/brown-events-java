@@ -52,7 +52,8 @@ public class RegistrationController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Registration is closed for this conference.", content = @Content)
     })
     @PostMapping("/{id}/register")
     public ResponseEntity<com.brownevents.app.ApiResponse<Registration>> registerAttendee(

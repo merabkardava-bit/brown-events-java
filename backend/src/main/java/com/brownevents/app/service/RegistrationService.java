@@ -3,6 +3,7 @@ package com.brownevents.app.service;
 import com.brownevents.app.entity.Attendee;
 import com.brownevents.app.entity.Conference;
 import com.brownevents.app.entity.Registration;
+import com.brownevents.app.exception.RegistrationClosedException;
 import com.brownevents.app.exception.RegistrationMismatchException;
 import com.brownevents.app.exception.ResourceNotFoundException;
 import com.brownevents.app.repository.AttendeeRepository;
@@ -11,10 +12,13 @@ import com.brownevents.app.repository.RegistrationRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class RegistrationService {
+
+    private static final List<String> CLOSED_STATUSES = Arrays.asList("COMPLETED", "CANCELLED");
 
     private final RegistrationRepository registrationRepository;
     private final ConferenceRepository conferenceRepository;
@@ -29,9 +33,14 @@ public class RegistrationService {
     }
 
     public Registration registerAttendee(Long conferenceId, Attendee attendee) {
+        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
+        if (conference.getStatus() != null
+                && CLOSED_STATUSES.contains(conference.getStatus().trim().toUpperCase())) {
+            throw new RegistrationClosedException(
+                    "Registration is closed for this conference (status: " + conference.getStatus() + ")");
+        }
         Attendee savedAttendee = attendeeRepository.findByEmail(attendee.getEmail())
                 .orElseGet(() -> attendeeRepository.save(attendee));
-        Conference conference = conferenceRepository.findById(conferenceId).orElseThrow(() -> new ResourceNotFoundException("Conference not found"));
         Registration registration = new Registration();
         registration.setAttendee(savedAttendee);
         registration.setConference(conference);

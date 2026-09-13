@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getConference, registerAttendee } from '../api'
+import { isRegistrationOpen, registrationClosedNotice } from '../registrationEligibility'
 
 export default function RegistrationPage() {
   const { id } = useParams()
@@ -191,11 +192,17 @@ export default function RegistrationPage() {
               />
             </div>
 
+            {!isRegistrationOpen(conference?.status) && (
+              <p className="form-hint" style={{ color: '#6E4A2A', fontStyle: 'italic', marginBottom: '16px' }}>
+                {registrationClosedNotice(conference?.status)}
+              </p>
+            )}
+
             <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
               <button
                 type="submit"
                 className="btn btn--primary"
-                disabled={submitting}
+                disabled={submitting || !isRegistrationOpen(conference?.status)}
               >
                 {submitting ? 'Submitting...' : 'Register'}
               </button>
