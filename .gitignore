@@ -32,3 +32,8 @@ postgres_data/
 
 # Logs
 *.log
+
+# Temporary files
+.temp/
+*.temp
+
