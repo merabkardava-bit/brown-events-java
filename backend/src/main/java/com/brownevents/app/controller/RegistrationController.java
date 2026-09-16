@@ -1,5 +1,10 @@
 package com.brownevents.app.controller;
 
+import com.brownevents.app.ApiResponse;
+import com.brownevents.app.dto.AttendeeRequest;
+import com.brownevents.app.dto.RegistrationResponse;
+import com.brownevents.app.dto.mapper.AttendeeMapper;
+import com.brownevents.app.dto.mapper.RegistrationMapper;
 import com.brownevents.app.entity.Attendee;
 import com.brownevents.app.entity.Registration;
 import com.brownevents.app.service.RegistrationService;
@@ -10,7 +15,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -18,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Tag(name = "Registrations", description = "Register attendees for conferences and manage existing registrations.")
 @RestController
@@ -40,7 +45,7 @@ public class RegistrationController {
                     + "The response is wrapped in a `data` envelope."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "Attendee registered successfully.",
                     content = @Content(
@@ -52,11 +57,11 @@ public class RegistrationController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content),
-            @ApiResponse(responseCode = "409", description = "Registration is closed for this conference.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Registration is closed for this conference.", content = @Content)
     })
     @PostMapping("/{id}/register")
-    public ResponseEntity<com.brownevents.app.ApiResponse<Registration>> registerAttendee(
+    public ResponseEntity<ApiResponse<RegistrationResponse>> registerAttendee(
             @Parameter(description = "Numeric ID of the conference to register for.", example = "1", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -64,7 +69,7 @@ public class RegistrationController {
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Attendee.class),
+                            schema = @Schema(implementation = AttendeeRequest.class),
                             examples = @ExampleObject(
                                     name = "Register attendee",
                                     value = "{"
@@ -75,8 +80,10 @@ public class RegistrationController {
                             )
                     )
             )
-            @org.springframework.web.bind.annotation.RequestBody Attendee attendee) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(registrationService.registerAttendee(id, attendee)));
+            @org.springframework.web.bind.annotation.RequestBody AttendeeRequest attendeeRequest) {
+        Attendee attendee = AttendeeMapper.toEntity(attendeeRequest);
+        Registration registration = registrationService.registerAttendee(id, attendee);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(RegistrationMapper.toResponse(registration)));
     }
 
     // ── GET /api/conferences/{id}/registrations ───────────────────────────────
@@ -86,21 +93,25 @@ public class RegistrationController {
             description = "Returns all registrations (including attendee details) for the specified conference."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Registrations retrieved successfully.",
                     content = @Content(
                             mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = Registration.class))
+                            array = @ArraySchema(schema = @Schema(implementation = RegistrationResponse.class))
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @GetMapping("/{id}/registrations")
-    public ResponseEntity<com.brownevents.app.ApiResponse<List<Registration>>> getRegistrations(
+    public ResponseEntity<ApiResponse<List<RegistrationResponse>>> getRegistrations(
             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
             @PathVariable Long id) {
-        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(registrationService.getRegistrations(id)));
+        List<Registration> registrations = registrationService.getRegistrations(id);
+        List<RegistrationResponse> response = registrations.stream()
+                .map(RegistrationMapper::toResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>(response));
     }
 
     // ── DELETE /api/conferences/{id}/registrations/{registrationId} ───────────
@@ -111,9 +122,9 @@ public class RegistrationController {
                     + "Returns 400 if the registrationId does not belong to the specified conferenceId."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Registration cancelled successfully.", content = @Content),
-            @ApiResponse(responseCode = "400", description = "Registration does not belong to this conference.", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Conference or registration not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "Registration cancelled successfully.", content = @Content),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Registration does not belong to this conference.", content = @Content),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference or registration not found.", content = @Content)
     })
     @DeleteMapping("/{id}/registrations/{registrationId}")
     public ResponseEntity<Void> deleteRegistration(
