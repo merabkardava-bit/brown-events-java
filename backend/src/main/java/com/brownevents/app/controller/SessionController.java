@@ -1,5 +1,9 @@
 package com.brownevents.app.controller;
 
+import com.brownevents.app.ApiResponse;
+import com.brownevents.app.dto.SessionResponse;
+import com.brownevents.app.dto.UpdateSessionRequest;
+import com.brownevents.app.dto.mapper.SessionMapper;
 import com.brownevents.app.entity.Session;
 import com.brownevents.app.service.SessionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,7 +12,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -33,21 +36,22 @@ public class SessionController {
             description = "Returns a single conference session identified by its numeric ID, including the linked speaker and room."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Session found and returned.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Session.class)
+                            schema = @Schema(implementation = SessionResponse.class)
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
     })
     @GetMapping("/{id}")
-    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> getSession(
+    public ResponseEntity<ApiResponse<SessionResponse>> getSession(
             @Parameter(description = "Numeric ID of the session.", example = "10", required = true)
             @PathVariable Long id) {
-        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(sessionService.getSession(id)));
+        Session session = sessionService.getSession(id);
+        return ResponseEntity.ok(new ApiResponse<>(SessionMapper.toResponse(session)));
     }
 
     // ── PUT /api/sessions/{id} ────────────────────────────────────────────────
@@ -59,18 +63,18 @@ public class SessionController {
                     + "The session's parent conference cannot be changed via this endpoint."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Session updated successfully.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Session.class)
+                            schema = @Schema(implementation = SessionResponse.class)
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Session not found.", content = @Content)
     })
     @PutMapping("/{id}")
-    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> updateSession(
+    public ResponseEntity<ApiResponse<SessionResponse>> updateSession(
             @Parameter(description = "Numeric ID of the session to update.", example = "10", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -78,7 +82,7 @@ public class SessionController {
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Session.class),
+                            schema = @Schema(implementation = UpdateSessionRequest.class),
                             examples = @ExampleObject(
                                     name = "Update session capacity and room",
                                     value = "{"
@@ -93,7 +97,9 @@ public class SessionController {
                             )
                     )
             )
-            @org.springframework.web.bind.annotation.RequestBody Session session) {
-        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(sessionService.updateSession(id, session)));
+            @org.springframework.web.bind.annotation.RequestBody UpdateSessionRequest sessionRequest) {
+        Session session = SessionMapper.toEntity(sessionRequest);
+        Session updated = sessionService.updateSession(id, session);
+        return ResponseEntity.ok(new ApiResponse<>(SessionMapper.toResponse(updated)));
     }
 }
