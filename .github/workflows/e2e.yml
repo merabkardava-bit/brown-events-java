@@ -1,0 +1,61 @@
+name: End-to-End Tests (BEVJ-205)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e:
+    name: Playwright Java E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Start Docker Compose Stack
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for services to be healthy and responsive
+        run: |
+          echo "Waiting for services to become ready..."
+          for i in {1..60}; do
+            if curl -s -f http://localhost:3000 > /dev/null && curl -s -f http://localhost:8080/actuator/health > /dev/null; then
+              echo "All services are up and healthy!"
+              exit 0
+            fi
+            echo "Waiting for services... ($i/60)"
+            sleep 2
+          done
+          echo "Timeout waiting for services"
+          docker compose logs
+          exit 1
+
+      - name: Run Playwright Java E2E test suite
+        run: |
+          mvn -f backend/pom.xml test -Dgroups=e2e -Dfrontend.url=http://localhost:3000
+
+      - name: Tear down Docker Compose
+        if: always()
+        run: docker compose down -v
+
+      - name: Upload E2E Failure Screenshots (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-screenshots
+          path: backend/target/e2e-screenshots/
+          if-no-files-found: ignore
+          retention-days: 7

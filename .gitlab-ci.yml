@@ -44,6 +44,40 @@ frontend:build:
     paths:
       - frontend/dist/
 
+e2e:
+  stage: test
+  image: maven:3.8-openjdk-11
+  services:
+    - name: docker:28.5.2-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    frontend.url: "http://docker:3000"
+  before_script:
+    - apt-get update && apt-get install -y docker-compose curl
+  script:
+    - docker-compose up -d --build
+    # Wait for backend and frontend services to be healthy and responsive
+    - |
+      echo "Waiting for services to become ready..."
+      for i in $(seq 1 60); do
+        if curl -s -f http://docker:3000 > /dev/null && curl -s -f http://docker:8080/actuator/health > /dev/null; then
+          echo "All services are up and healthy!"
+          break
+        fi
+        echo "Waiting for services... ($i/60)"
+        sleep 2
+      done
+    # Run Playwright Java E2E suite
+    - mvn -f backend/pom.xml test -Dgroups=e2e -Dfrontend.url=http://docker:3000
+  after_script:
+    - docker-compose down -v || true
+  artifacts:
+    when: on_failure
+    paths:
+      - backend/target/e2e-screenshots/
+    expire_in: 7 days
+
 docker:backend:
   stage: docker
   image: docker:28.5.2

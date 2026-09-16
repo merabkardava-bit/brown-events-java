@@ -15,7 +15,13 @@ export async function getConferences(page = 0, size = 12, search = '', from = ''
 
 export async function getConference(id) {
   const response = await fetch(`${BASE_URL}/api/conferences/${id}`);
-  return response.json();
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || `Error ${response.status}: Failed to fetch conference`);
+  }
+
+  return data;
 }
 
 export async function getConferenceSessions(id, page = 0, size = 10) {
