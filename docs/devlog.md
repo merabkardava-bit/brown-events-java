@@ -88,3 +88,14 @@ All four controllers were updated and 8 bare `Optional.get()` call sites replace
 Code review caught a critical runtime regression — the registrations tab went blank because `api.js` was
 calling `Array.isArray()` on the new envelope object — and several missing 404 checks in the service layer.
 All 11 findings were resolved before merge.
+
+## 2026-09-16
+
+### BEVJ-110 — Introduce DTOs to Decouple API from Database
+
+Decoupled the REST API contract from database entities by introducing dedicated request and response
+DTOs with hand-written static mappers in `com.brownevents.app.dto`. Mapping occurs at the controller
+layer so service interfaces and service unit tests remain intact. Updated `ConferenceController`,
+`SessionController`, `SpeakerController`, and `RegistrationController` so no JPA entity appears in
+controller return types or request bodies, and refreshed Swagger `@Schema` documentation. Removed
+obsolete `@JsonIgnore` annotations on `Conference` relationships and added mapper unit tests.
