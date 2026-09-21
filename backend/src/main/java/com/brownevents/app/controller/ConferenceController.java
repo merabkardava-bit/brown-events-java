@@ -1,5 +1,12 @@
 package com.brownevents.app.controller;
 
+import com.brownevents.app.ApiResponse;
+import com.brownevents.app.dto.ConferenceRequest;
+import com.brownevents.app.dto.ConferenceResponse;
+import com.brownevents.app.dto.CreateSessionRequest;
+import com.brownevents.app.dto.SessionResponse;
+import com.brownevents.app.dto.mapper.ConferenceMapper;
+import com.brownevents.app.dto.mapper.SessionMapper;
 import com.brownevents.app.entity.Conference;
 import com.brownevents.app.entity.Session;
 import com.brownevents.app.service.ConferenceService;
@@ -9,20 +16,20 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import org.springframework.format.annotation.DateTimeFormat;
-
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Tag(name = "Conferences", description = "Create and manage conferences, including their sessions.")
 @RestController
@@ -44,14 +51,14 @@ public class ConferenceController {
                     + "Requesting a page beyond the last one returns an empty `data` array without an error."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Conferences retrieved successfully.",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    example = "{\"data\":[],\"page\":0,\"size\":12,"
-                                            + "\"totalElements\":45,\"totalPages\":4}"
+                                     example = "{\"data\":[],\"page\":0,\"size\":12,"
+                                             + "\"totalElements\":45,\"totalPages\":4}"
                             )
                     )
             )
@@ -74,8 +81,12 @@ public class ConferenceController {
             return ResponseEntity.badRequest().body(errorBody);
         }
         Page<Conference> result = conferenceService.getAllConferences(PageRequest.of(page, size), search, from, to, status);
+        List<ConferenceResponse> responseData = result.getContent().stream()
+                .map(ConferenceMapper::toResponse)
+                .collect(Collectors.toList());
+
         Map<String, Object> response = new HashMap<>();
-        response.put("data", result.getContent());
+        response.put("data", responseData);
         response.put("page", result.getNumber());
         response.put("size", result.getSize());
         response.put("totalElements", result.getTotalElements());
@@ -90,21 +101,22 @@ public class ConferenceController {
             description = "Returns a single conference identified by its numeric ID."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Conference found and returned.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Conference.class)
+                            schema = @Schema(implementation = ConferenceResponse.class)
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @GetMapping("/{id}")
-    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> getConference(
+    public ResponseEntity<ApiResponse<ConferenceResponse>> getConference(
             @Parameter(description = "Numeric ID of the conference.", example = "1", required = true)
             @PathVariable Long id) {
-        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(conferenceService.getConference(id)));
+        Conference conference = conferenceService.getConference(id);
+        return ResponseEntity.ok(new ApiResponse<>(ConferenceMapper.toResponse(conference)));
     }
 
     // ── POST /api/conferences ─────────────────────────────────────────────────
@@ -114,23 +126,23 @@ public class ConferenceController {
             description = "Creates a new conference. The `id` field is ignored if supplied — it is assigned by the database."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "Conference created successfully.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Conference.class)
+                            schema = @Schema(implementation = ConferenceResponse.class)
                     )
             )
     })
     @PostMapping
-    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> createConference(
+    public ResponseEntity<ApiResponse<ConferenceResponse>> createConference(
             @RequestBody(
                     description = "Conference details to create.",
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Conference.class),
+                            schema = @Schema(implementation = ConferenceRequest.class),
                             examples = @ExampleObject(
                                     name = "New conference",
                                     value = "{"
@@ -144,8 +156,10 @@ public class ConferenceController {
                             )
                     )
             )
-            @org.springframework.web.bind.annotation.RequestBody Conference conference) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(conferenceService.createConference(conference)));
+            @org.springframework.web.bind.annotation.RequestBody ConferenceRequest conferenceRequest) {
+        Conference conference = ConferenceMapper.toEntity(conferenceRequest);
+        Conference created = conferenceService.createConference(conference);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(ConferenceMapper.toResponse(created)));
     }
 
     // ── PUT /api/conferences/{id} ─────────────────────────────────────────────
@@ -155,18 +169,18 @@ public class ConferenceController {
             description = "Replaces all editable fields of an existing conference. Supply the full conference object — omitted fields are overwritten with null."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Conference updated successfully.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Conference.class)
+                            schema = @Schema(implementation = ConferenceResponse.class)
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @PutMapping("/{id}")
-    public ResponseEntity<com.brownevents.app.ApiResponse<Conference>> updateConference(
+    public ResponseEntity<ApiResponse<ConferenceResponse>> updateConference(
             @Parameter(description = "Numeric ID of the conference to update.", example = "1", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -174,7 +188,7 @@ public class ConferenceController {
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Conference.class),
+                            schema = @Schema(implementation = ConferenceRequest.class),
                             examples = @ExampleObject(
                                     name = "Update status to ONGOING",
                                     value = "{"
@@ -188,8 +202,10 @@ public class ConferenceController {
                             )
                     )
             )
-            @org.springframework.web.bind.annotation.RequestBody Conference conference) {
-        return ResponseEntity.ok(new com.brownevents.app.ApiResponse<>(conferenceService.updateConference(id, conference)));
+            @org.springframework.web.bind.annotation.RequestBody ConferenceRequest conferenceRequest) {
+        Conference conference = ConferenceMapper.toEntity(conferenceRequest);
+        Conference updated = conferenceService.updateConference(id, conference);
+        return ResponseEntity.ok(new ApiResponse<>(ConferenceMapper.toResponse(updated)));
     }
 
     // ── GET /api/conferences/{id}/sessions ────────────────────────────────────
@@ -200,7 +216,7 @@ public class ConferenceController {
                     + "Requesting a page beyond the last one returns an empty `data` array without an error."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Sessions retrieved successfully.",
                     content = @Content(
@@ -211,7 +227,7 @@ public class ConferenceController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @GetMapping("/{id}/sessions")
     public ResponseEntity<Map<String, Object>> getConferenceSessions(
@@ -222,8 +238,12 @@ public class ConferenceController {
             @Parameter(description = "Number of sessions per page.", example = "10")
             @RequestParam(defaultValue = "10") int size) {
         Page<Session> result = conferenceService.getConferenceSessions(id, PageRequest.of(page, size));
+        List<SessionResponse> responseData = result.getContent().stream()
+                .map(SessionMapper::toResponse)
+                .collect(Collectors.toList());
+
         Map<String, Object> response = new HashMap<>();
-        response.put("data", result.getContent());
+        response.put("data", responseData);
         response.put("page", result.getNumber());
         response.put("size", result.getSize());
         response.put("totalElements", result.getTotalElements());
@@ -240,7 +260,7 @@ public class ConferenceController {
                     + "The conference field in the body is ignored — the path {id} is the authoritative source."
     )
     @ApiResponses({
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "Session created successfully.",
                     content = @Content(
@@ -255,10 +275,10 @@ public class ConferenceController {
                             )
                     )
             ),
-            @ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Conference not found.", content = @Content)
     })
     @PostMapping("/{id}/sessions")
-    public ResponseEntity<com.brownevents.app.ApiResponse<Session>> createSession(
+    public ResponseEntity<ApiResponse<SessionResponse>> createSession(
             @Parameter(description = "Numeric ID of the conference that will own this session.", example = "1", required = true)
             @PathVariable Long id,
             @RequestBody(
@@ -266,7 +286,7 @@ public class ConferenceController {
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Session.class),
+                            schema = @Schema(implementation = CreateSessionRequest.class),
                             examples = @ExampleObject(
                                     name = "New session",
                                     value = "{"
@@ -281,7 +301,9 @@ public class ConferenceController {
                             )
                     )
             )
-            @org.springframework.web.bind.annotation.RequestBody Session session) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(new com.brownevents.app.ApiResponse<>(conferenceService.createSession(id, session)));
+            @org.springframework.web.bind.annotation.RequestBody CreateSessionRequest sessionRequest) {
+        Session session = SessionMapper.toEntity(sessionRequest);
+        Session created = conferenceService.createSession(id, session);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(SessionMapper.toResponse(created)));
     }
 }

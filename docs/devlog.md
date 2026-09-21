@@ -99,3 +99,11 @@ Added an end-to-end test suite using Playwright covering the 3 critical user flo
 3. **Flow 3: Open conference search → apply keyword filter → verify results update**: covers typing search keywords, debounced result filtering, verifying matching conference cards, search reset, and failure/edge cases (empty state for non-matching queries and invalid date range inline validation).
 
 Configured the Playwright Java test suite (`com.brownevents.app.e2e`) using JUnit 5, extending `BaseE2ETest` with automated failure screenshot capture to `target/e2e-screenshots/`. Added CI pipelines (`.github/workflows/e2e.yml` and `.gitlab-ci.yml`) to bring up the full Docker Compose stack, wait for services to be ready, execute the E2E suite (`mvn test -Dgroups=e2e`), and upload failure screenshots as artifacts. Standard unit test runs exclude the `e2e` group to keep unit tests fast and isolated.
+### BEVJ-110 — Introduce DTOs to Decouple API from Database
+
+Decoupled the REST API contract from database entities by introducing dedicated request and response
+DTOs with hand-written static mappers in `com.brownevents.app.dto`. Mapping occurs at the controller
+layer so service interfaces and service unit tests remain intact. Updated `ConferenceController`,
+`SessionController`, `SpeakerController`, and `RegistrationController` so no JPA entity appears in
+controller return types or request bodies, and refreshed Swagger `@Schema` documentation. Removed
+obsolete `@JsonIgnore` annotations on `Conference` relationships and added mapper unit tests.
