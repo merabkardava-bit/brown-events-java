@@ -35,4 +35,3 @@ postgres_data/
 
 # Temporary files
 .temp/
-*.temp
