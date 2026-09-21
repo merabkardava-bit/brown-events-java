@@ -61,7 +61,7 @@ e2e:
     - |
       echo "Waiting for services to become ready..."
       for i in $(seq 1 60); do
-        if curl -s -f http://docker:3000 > /dev/null && curl -s -f http://docker:8080/actuator/health > /dev/null; then
+        if curl -s -f http://docker:3000 > /dev/null && curl -s -f http://docker:8080/api/conferences > /dev/null; then
           echo "All services are up and healthy!"
           break
         fi
