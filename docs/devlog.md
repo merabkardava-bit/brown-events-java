@@ -91,6 +91,14 @@ All 11 findings were resolved before merge.
 
 ## 2026-09-16
 
+### BEVJ-205 — End-to-End Test Suite
+
+Added an end-to-end test suite using Playwright covering the 3 critical user flows:
+1. **Flow 1: Browse conferences → open detail → view sessions**: covers viewing conferences on the home page, clicking through to a conference detail, verifying session list rendering and session selection, plus failure handling when navigating to a non-existent conference ID.
+2. **Flow 2: Open session detail → register attendee → verify registration appears**: covers navigating to session details, registering an attendee for an active conference, verifying the registered attendee appears in the registrations list, and tearing down the created record. Covers failure cases: required input validation checks and closed/completed conference registration blocking.
+3. **Flow 3: Open conference search → apply keyword filter → verify results update**: covers typing search keywords, debounced result filtering, verifying matching conference cards, search reset, and failure/edge cases (empty state for non-matching queries and invalid date range inline validation).
+
+Configured the Playwright Java test suite (`com.brownevents.app.e2e`) using JUnit 5, extending `BaseE2ETest` with automated failure screenshot capture to `target/e2e-screenshots/`. Added CI pipelines (`.github/workflows/e2e.yml` and `.gitlab-ci.yml`) to bring up the full Docker Compose stack, wait for services to be ready, execute the E2E suite (`mvn test -Dgroups=e2e`), and upload failure screenshots as artifacts. Standard unit test runs exclude the `e2e` group to keep unit tests fast and isolated.
 ### BEVJ-110 — Introduce DTOs to Decouple API from Database
 
 Decoupled the REST API contract from database entities by introducing dedicated request and response
